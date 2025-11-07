@@ -50,22 +50,22 @@ impl  VM {
 
             let instruction = self.read_byte(&chunk);
             match instruction {             
-                OpCode::OpReturn => {
+                OpCode::Return => {
                     println!("{}", self.stack.pop().unwrap());
                     return InterpretResult::Ok;
                 }
-                OpCode::OpConstant => {
+                OpCode::Constant => {
                     let constant = self.read_constant(&chunk);
                     self.stack.push(constant);                   
                 }, 
-                OpCode::OpNegate => {
+                OpCode::Negate => {
                     let value = self.stack.pop().unwrap();
                     self.stack.push(-value);
                 }  
-                OpCode::OpAdd => self.binary_op(|a, b| a + b),               
-                OpCode::OpSubtract => self.binary_op(|a, b| a - b), 
-                OpCode::OpMultiply => self.binary_op(|a, b| a * b),  
-                OpCode::OpDivide => self.binary_op(|a, b| a / b),         
+                OpCode::Add => self.binary_op(|a, b| a + b),               
+                OpCode::Subtract => self.binary_op(|a, b| a - b), 
+                OpCode::Multiply => self.binary_op(|a, b| a * b),  
+                OpCode::Divide => self.binary_op(|a, b| a / b),         
             }
         }
     }
