@@ -6,15 +6,14 @@ use crate::value::*;
 pub enum OpCode {
     OpConstant = 0,
     OpReturn,
+    OpNegate,
+    OpAdd,
+    OpSubtract,
+    OpMultiply,
+    OpDivide,    
 }
 
-// impl Display for OpCode {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result {
-//         match {
-//             OpCode::OpReturn == 0 => write!(f, "OP_RETURN"),
-//         };
-//     }
-// }
+
 
 pub struct Chunk {
     code: Vec<u8>,
@@ -78,7 +77,12 @@ impl Chunk {
         let instruction:OpCode = self.code[offset].into();
         match instruction {
             OpCode::OpConstant => self.constant_instruction("OP_CONSTANT", offset),  
-            OpCode::OpReturn => self.simple_instruction("OP_RETURN", offset),           
+            OpCode::OpReturn => self.simple_instruction("OP_RETURN", offset), 
+            OpCode::OpNegate => self.simple_instruction("OP_NEGATE", offset),
+            OpCode::OpAdd => self.simple_instruction("OP_ADD", offset),
+            OpCode::OpSubtract => self.simple_instruction("OP_SUBTRACT", offset),   
+            OpCode::OpMultiply => self.simple_instruction("OP_MULTIPLY", offset),
+            OpCode::OpDivide =>  self.simple_instruction("OP_DIVIDE", offset) ,   
         }
     }
 
@@ -108,6 +112,11 @@ impl From<u8> for OpCode {
         match code {
             0 => OpCode::OpConstant,
             1 => OpCode::OpReturn,
+            2 => OpCode::OpNegate,
+            3 => OpCode::OpAdd,
+            4 => OpCode::OpSubtract,
+            5 => OpCode::OpMultiply,
+            6 => OpCode::OpDivide,
             _ => unimplemented!("Invalid opcode")
         }
     }

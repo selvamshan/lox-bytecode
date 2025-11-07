@@ -1,3 +1,4 @@
+use crate::value;
 use crate::value::*;
 use crate::chunks::*;
 
@@ -56,7 +57,15 @@ impl  VM {
                 OpCode::OpConstant => {
                     let constant = self.read_constant(&chunk);
                     self.stack.push(constant);                   
-                },                
+                }, 
+                OpCode::OpNegate => {
+                    let value = self.stack.pop().unwrap();
+                    self.stack.push(-value);
+                }  
+                OpCode::OpAdd => self.binary_op(|a, b| a + b),               
+                OpCode::OpSubtract => self.binary_op(|a, b| a - b), 
+                OpCode::OpMultiply => self.binary_op(|a, b| a * b),  
+                OpCode::OpDivide => self.binary_op(|a, b| a / b),         
             }
         }
     }
@@ -72,5 +81,16 @@ impl  VM {
         self.ip += 1;
         chunk.get_constant(index)
     }
+
+    fn binary_op<F>(&mut self,  f: F)
+    where F: Fn(Value, Value) -> Value,   
+    {      
+         let b = self.stack.pop().unwrap();
+         let a = self.stack.pop().unwrap();
+         self.stack.push(f(a, b));
+    }
+    
+  
     
 }
+
