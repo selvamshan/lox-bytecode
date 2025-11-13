@@ -1,3 +1,5 @@
+use crate::token::*;
+use crate::token_type::*;
 
 pub struct Scanner{
     source: Vec<char>,
@@ -6,64 +8,12 @@ pub struct Scanner{
     line : usize
 }
 
-pub struct Token {
-   pub ttype: TokenType,
-   pub lexeme: String,
-   pub  line: usize,
-}
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum TokenType {
-    // Single-character tokens.
-    LeftParen,
-    RightParen,
-    LeftBrace,
-    RightBrace,
-    Comma,
-    Dot,
-    Minus,
-    Plus,
-    SemiColon,
-    Slash,
-    Star,
-    // One or two character tokens.
-    Bang,
-    BangEqual,
-    Assign, //('=' )
-    Equal,  // ('==' )
-    Greater,
-    GreaterEqual,
-    Less,
-    LessEqual,
-    // Literals.
-    Identifier,
-    String,
-    Number,
 
-    // Keywords.
-    Break,
-    And,
-    Class,
-    Else,
-    False,
-    Fun,
-    For,
-    If,
-    Nil,
-    Or,
-    Print,
-    Return,
-    Super,
-    This,
-    True,
-    Var,
-    While,
-    Error,
-    Eof,
-}
+
 
 impl Scanner {
-    pub fn new(source :&String) -> Self {
+    pub fn new(source :&str) -> Self {
         Self{
             source: source.chars().collect::<Vec<char>>(),
             start: 0,

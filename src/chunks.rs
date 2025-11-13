@@ -1,4 +1,4 @@
-use std::fmt::{Display, Result};
+use std::fmt::Display;
 
 use crate::value::*;
 
@@ -49,8 +49,10 @@ impl Chunk {
         self.constants = ValueArray::new();
     }
 
-    pub fn add_constant(&mut self, value: Value) -> u8 {
-        self.constants.write(value) as u8     
+    pub fn add_constant(&mut self, value: Value) -> Option<u8>  {
+        let idx = self.constants.write(value);
+        u8::try_from(idx).map_err(|_| ()).ok()
+       
     }
 
     pub fn get_constant(&self, index:usize) -> Value {
@@ -102,7 +104,7 @@ impl Chunk {
  }
 
  impl Display for Chunk {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self.code)
     }
  }

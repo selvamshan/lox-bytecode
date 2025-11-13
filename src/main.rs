@@ -5,7 +5,8 @@ use std::io::{Result, BufRead, Write, stdin, stdout};
 mod vm;
 use vm::*;
 mod chunks;
-use chunks::*;
+mod token;
+mod token_type;
 mod value;
 mod compliler;
 mod scanner;
@@ -50,8 +51,8 @@ fn repl(vm: &mut VM) {
 fn run_file(vm: &mut VM, path: &str) -> Result<()>{
     let  buf = std::fs::read_to_string(path)?;
     match vm.interpret(&buf) {
-        InterpretResult::CompileError => std::process::exit(65),
-        InterpretResult::RuntimeError => std::process::exit(70),
-        InterpretResult::Ok =>  std::process::exit(0),
+        Err(InterpretResult::CompileError) => std::process::exit(65),
+        Err(InterpretResult::RuntimeError) => std::process::exit(70),
+        _ =>  std::process::exit(0),
     }    
 }
