@@ -44,7 +44,7 @@ impl  VM {
             {
                 print!("          ");
                 for slot in &self.stack {
-                    print!("[ {slot} ] ");
+                    print!("[ {:?} ] ", slot.to_string());
 
                 }
                 println!();
