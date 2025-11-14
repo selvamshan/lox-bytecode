@@ -82,7 +82,11 @@ impl  VM {
                 OpCode::Add => self.binary_op( |a, b| a + b)?,               
                 OpCode::Subtract => self.binary_op( |a, b| a - b)?, 
                 OpCode::Multiply => self.binary_op( |a, b| a * b)?,  
-                OpCode::Divide => self.binary_op( |a, b| a / b)?,   
+                OpCode::Divide => self.binary_op( |a, b| a / b)?, 
+                OpCode::Not => {
+                    let value = self.pop();
+                    self.stack.push(Value::Boolean(value.is_falsey()))
+                }
 
             }
         }

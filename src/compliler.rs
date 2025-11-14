@@ -93,6 +93,7 @@ impl<'a> Compiler<'a> {
               precedence: Precedence::None, 
             }; 
             TokenType::NumberOfTokes as usize];
+
             rules[TokenType::LeftParen as usize] = ParseRule { 
                 prefix:Some(|c| c.grouping()), 
                 infix: None, 
@@ -113,6 +114,7 @@ impl<'a> Compiler<'a> {
             rules[TokenType::Nil as usize].prefix = Some(|c|c.literal());
             rules[TokenType::True as usize].prefix = Some(|c|c.literal());
             rules[TokenType::False as usize].prefix = Some(|c|c.literal());
+            rules[TokenType::Bang as usize].prefix = Some(|c|c.unary());
           
         Self { 
             parser: Parser::default(),
@@ -239,6 +241,7 @@ impl<'a> Compiler<'a> {
 
         match operator_type {
             TokenType::Minus => self.emit_byte(OpCode::Negate.into()),
+            TokenType::Bang => self.emit_byte(OpCode::Not.into()),
             _ => unimplemented!("nope")
         }
         

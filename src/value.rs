@@ -80,6 +80,10 @@ impl Value {
     pub fn is_number(&self) -> bool {
       matches!(self, Value::Number(_))
      }
+
+    pub fn is_falsey(&self) -> bool {
+        matches!(self, Value::Nil | Value::Boolean(false))
+    }
 }
 
 
