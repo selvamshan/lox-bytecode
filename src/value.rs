@@ -2,13 +2,12 @@ use std::fmt::Display;
 use std::ops::{Add, Sub, Mul, Div, Neg};
 
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, PartialOrd)]
 pub enum  Value {
     Boolean(bool),
     Number(f64),
     Nil
 }
-
 
 
 impl Display for Value {

@@ -107,14 +107,45 @@ impl<'a> Compiler<'a> {
                 infix: Some(|c| c.binary()), 
                 precedence: Precedence::Term };            
             rules[TokenType::Slash as usize]= ParseRule {
-                 prefix:None, infix: Some(|c| c.binary()), precedence: Precedence::Factor };
+                 prefix:None,
+                  infix: Some(|c| c.binary()), 
+                  precedence: Precedence::Factor };
             rules[TokenType::Star as usize] = ParseRule { 
-                prefix:None, infix: Some(|c| c.binary()), precedence: Precedence::Factor };
+                prefix:None, 
+                infix: Some(|c| c.binary()), 
+                precedence: Precedence::Factor };
             rules[TokenType::Number as usize].prefix = Some(|c| c.number()); 
             rules[TokenType::Nil as usize].prefix = Some(|c|c.literal());
             rules[TokenType::True as usize].prefix = Some(|c|c.literal());
             rules[TokenType::False as usize].prefix = Some(|c|c.literal());
             rules[TokenType::Bang as usize].prefix = Some(|c|c.unary());
+
+            rules[TokenType::BangEqual as usize] = ParseRule { 
+                prefix:None, 
+                infix: Some(|c| c.binary()), 
+                precedence: Precedence::Equality };          
+            rules[TokenType::Equal as usize] = ParseRule { 
+                prefix:None, 
+                infix: Some(|c| c.binary()), 
+                precedence: Precedence::Equality };
+
+            rules[TokenType::Greater as usize] = ParseRule { 
+                prefix:None, 
+                infix: Some(|c| c.binary()), 
+                precedence: Precedence::Comparison };
+            rules[TokenType::GreaterEqual as usize] = ParseRule { 
+                prefix:None, 
+                infix: Some(|c| c.binary()), 
+                precedence: Precedence::Comparison };
+
+            rules[TokenType::Less as usize] = ParseRule { 
+                prefix:None, 
+                infix: Some(|c| c.binary()), 
+                precedence: Precedence::Comparison };
+            rules[TokenType::LessEqual as usize] = ParseRule { 
+                prefix:None, 
+                infix: Some(|c| c.binary()), 
+                precedence: Precedence::Comparison };
           
         Self { 
             parser: Parser::default(),
@@ -210,6 +241,13 @@ impl<'a> Compiler<'a> {
            TokenType::Minus => self.emit_byte(OpCode::Subtract.into()), 
            TokenType::Star => self.emit_byte(OpCode::Multiply.into()), 
            TokenType::Slash => self.emit_byte(OpCode::Divide.into()), 
+           TokenType::BangEqual => self.emit_bytes(OpCode::Equal, OpCode::Not.into()), 
+           TokenType::Equal => self.emit_byte(OpCode::Equal.into()), 
+           TokenType::Greater => self.emit_byte(OpCode::Greater.into()), 
+           TokenType::GreaterEqual => self.emit_bytes(OpCode::Less, OpCode::Not.into()), 
+           TokenType::Less => self.emit_byte(OpCode::Less.into()), 
+           TokenType::LessEqual => self.emit_bytes(OpCode::Greater, OpCode::Not.into()), 
+           
            _ => todo!()
         }
     }

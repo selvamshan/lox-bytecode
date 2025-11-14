@@ -14,7 +14,10 @@ pub enum OpCode {
     Nil,
     True,
     False,
-    Not,   
+    Not,
+    Equal,
+    Greater,
+    Less,    
 }
 
 
@@ -91,7 +94,11 @@ impl Chunk {
             OpCode::Nil =>  self.simple_instruction("OP_NIL", offset) ,
             OpCode::True =>  self.simple_instruction("OP_TRUE", offset) ,
             OpCode::False =>  self.simple_instruction("OP_FALSE", offset) , 
-            OpCode::Not => self.simple_instruction("OP_NOT", offset) 
+            OpCode::Not => self.simple_instruction("OP_NOT", offset),
+            OpCode::Equal => self.simple_instruction("OP_EQUAL", offset),
+            OpCode::Greater => self.simple_instruction("OP_GREATER", offset),
+            OpCode::Less => self.simple_instruction("OP_LESS", offset),
+            
         }
     }
 
@@ -130,6 +137,9 @@ impl From<u8> for OpCode {
             8 => OpCode::True,
             9 => OpCode::False,
             10 => OpCode::Not,
+            11 => OpCode::Equal,
+            12 => OpCode::Greater,
+            13 => OpCode::Less,
             _ => unimplemented!("Invalid opcode")
         }
     }
