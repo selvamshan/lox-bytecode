@@ -9,7 +9,7 @@ pub enum  Value {
     Nil
 }
 
-//pub type Value = f64;
+
 
 impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -76,6 +76,11 @@ impl Neg for Value {
     }
 }
 
+impl Value {
+    pub fn is_number(&self) -> bool {
+      matches!(self, Value::Number(_))
+     }
+}
 
 
 pub struct ValueArray {
@@ -93,10 +98,6 @@ impl ValueArray {
         count
     }
 
-    pub fn free(&mut self) {
-        self.values =Vec::new();
-    }
-
     pub fn print_value(&self, which: usize) {
         print!("{}", self.values[which])
     }
@@ -104,4 +105,6 @@ impl ValueArray {
     pub fn read_value(&self, which: usize) -> Value {
         self.values[which]
     }
+
+  
 }

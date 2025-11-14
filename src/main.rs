@@ -22,11 +22,8 @@ fn main() {
             println!("Usage: lox-bytecode [path]");
             std::process::exit(64);
         }
-    }
-
-
-     
-    vm.free();
+    }     
+   
 }
 
 fn repl(vm: &mut VM) {

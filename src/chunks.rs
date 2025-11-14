@@ -10,7 +10,10 @@ pub enum OpCode {
     Add,
     Subtract,
     Multiply,
-    Divide,    
+    Divide, 
+    Nil,
+    True,
+    False   
 }
 
 
@@ -43,11 +46,10 @@ impl Chunk {
         self.code[ip]
     }
 
-    pub fn free(&mut self) {
-        self.code = Vec::new();
-        self.constants.free();
-        self.constants = ValueArray::new();
+    pub fn get_line(&self, ip:usize) -> usize {
+        self.lines[ip]
     }
+    
 
     pub fn add_constant(&mut self, value: Value) -> Option<u8>  {
         let idx = self.constants.write(value);
@@ -84,7 +86,10 @@ impl Chunk {
             OpCode::Add => self.simple_instruction("OP_ADD", offset),
             OpCode::Subtract => self.simple_instruction("OP_SUBTRACT", offset),   
             OpCode::Multiply => self.simple_instruction("OP_MULTIPLY", offset),
-            OpCode::Divide =>  self.simple_instruction("OP_DIVIDE", offset) ,   
+            OpCode::Divide =>  self.simple_instruction("OP_DIVIDE", offset) , 
+            OpCode::Nil =>  self.simple_instruction("OP_NIL", offset) ,
+            OpCode::True =>  self.simple_instruction("OP_TRUE", offset) ,
+            OpCode::False =>  self.simple_instruction("OP_FALSE", offset) ,  
         }
     }
 
@@ -119,6 +124,9 @@ impl From<u8> for OpCode {
             4 => OpCode::Subtract,
             5 => OpCode::Multiply,
             6 => OpCode::Divide,
+            7 => OpCode::Nil,
+            8 => OpCode::True,
+            9 => OpCode::False,
             _ => unimplemented!("Invalid opcode")
         }
     }

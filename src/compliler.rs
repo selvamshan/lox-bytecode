@@ -1,5 +1,5 @@
 
-use std::cell::{Ref, RefCell};
+use std::cell:: RefCell;
 
 use crate::{scanner::*, vm::InterpretResult};
 use crate::chunks::*;
@@ -74,14 +74,14 @@ impl Precedence {
         
     }
 
-    fn previous(self) -> Self {
-        if self == Precedence::None {
-            panic!("no previous precedence berfore None")
-        } 
-        let p = self as usize;
-        (p - 1).into()       
+    // fn previous(self) -> Self {
+    //     if self == Precedence::None {
+    //         panic!("no previous precedence berfore None")
+    //     } 
+    //     let p = self as usize;
+    //     (p - 1).into()       
         
-    }
+    // }
 }
 
 impl<'a> Compiler<'a> {
@@ -109,8 +109,11 @@ impl<'a> Compiler<'a> {
                  prefix:None, infix: Some(|c| c.binary()), precedence: Precedence::Factor };
             rules[TokenType::Star as usize] = ParseRule { 
                 prefix:None, infix: Some(|c| c.binary()), precedence: Precedence::Factor };
-            rules[TokenType::Number as usize] = ParseRule {
-                 prefix:Some(|c| c.number()), infix: None, precedence: Precedence::None };
+            rules[TokenType::Number as usize].prefix = Some(|c| c.number()); 
+            rules[TokenType::Nil as usize].prefix = Some(|c|c.literal());
+            rules[TokenType::True as usize].prefix = Some(|c|c.literal());
+            rules[TokenType::False as usize].prefix = Some(|c|c.literal());
+          
         Self { 
             parser: Parser::default(),
             scanner: Scanner::new(&"".to_string()),
@@ -209,6 +212,16 @@ impl<'a> Compiler<'a> {
         }
     }
 
+    fn literal(&mut self) {
+        let operator_type = self.parser.previous.ttype;
+        match operator_type {
+            TokenType::Nil => self.emit_byte(OpCode::Nil.into()),
+            TokenType::True => self.emit_byte(OpCode::True.into()),
+            TokenType::False => self.emit_byte(OpCode::False.into()),
+            _ => unreachable!()
+        }
+    }
+
     fn grouping(&mut self)  {
         self.expression();
         self.consume(TokenType::RightParen, "Expect ')' after expresssion");
@@ -248,48 +261,7 @@ impl<'a> Compiler<'a> {
         }
     }
 
-    fn get_rule(&self, ttype:TokenType) -> &ParseRule {
-        &self.rules[ttype as usize]
-        // match ttype {            
-        //     TokenType::RightParen => ParseRule { prefix:None, infix: None, precedence: Precedence::None },
-        //     TokenType::LeftBrace => ParseRule { prefix:None, infix: None, precedence: Precedence::None },
-        //     TokenType::RightBrace => ParseRule { prefix:None, infix: None, precedence: Precedence::None },
-        //     TokenType::Comma => ParseRule { prefix:None, infix: None, precedence: Precedence::None },
-        //     TokenType::Dot => ParseRule { prefix:None, infix: None, precedence: Precedence::None },          
-        //     TokenType::SemiColon => ParseRule { prefix:None, infix: None, precedence: Precedence::None },            
-        //     TokenType::Bang => ParseRule { prefix:None, infix: None, precedence: Precedence::None },
-        //     TokenType::BangEqual => ParseRule { prefix:None, infix: None, precedence: Precedence::None },
-        //     TokenType::Assign => ParseRule { prefix:None, infix: None, precedence: Precedence::None },
-        //     TokenType::Equal => ParseRule { prefix:None, infix: None, precedence: Precedence::None },
-        //     TokenType::Greater => ParseRule { prefix:None, infix: None, precedence: Precedence::None },
-        //     TokenType::GreaterEqual => ParseRule { prefix:None, infix: None, precedence: Precedence::None },
-        //     TokenType::Less => ParseRule { prefix:None, infix: None, precedence: Precedence::None },
-        //     TokenType::LessEqual => ParseRule { prefix:None, infix: None, precedence: Precedence::None },
-        //     TokenType::Identifier => ParseRule { prefix:None, infix: None, precedence: Precedence::None },
-        //     TokenType::String => ParseRule { prefix:None, infix: None, precedence: Precedence::None },
-           
-        //     TokenType::And => ParseRule { prefix:None, infix: None, precedence: Precedence::None },
-        //     TokenType::Class => ParseRule { prefix:None, infix: None, precedence: Precedence::None },
-        //     TokenType::Else => ParseRule { prefix:None, infix: None, precedence: Precedence::None },
-        //     TokenType::False => ParseRule { prefix:None, infix: None, precedence: Precedence::None },
-        //     TokenType::For => ParseRule { prefix:None, infix: None, precedence: Precedence::None },
-        //     TokenType::Fun => ParseRule { prefix:None, infix: None, precedence: Precedence::None },
-        //     TokenType::If => ParseRule { prefix:None, infix: None, precedence: Precedence::None },
-        //     TokenType::Nil => ParseRule { prefix:None, infix: None, precedence: Precedence::None },
-        //     TokenType::Or => ParseRule { prefix:None, infix: None, precedence: Precedence::None },
-        //     TokenType::Print => ParseRule { prefix:None, infix: None, precedence: Precedence::None },
-        //     TokenType::Return => ParseRule { prefix:None, infix: None, precedence: Precedence::None },
-        //     TokenType::Super => ParseRule { prefix:None, infix: None, precedence: Precedence::None },
-        //     TokenType::This => ParseRule { prefix:None, infix: None, precedence: Precedence::None },
-        //     TokenType::True => ParseRule { prefix:None, infix: None, precedence: Precedence::None },
-        //     TokenType::Var => ParseRule { prefix:None, infix: None, precedence: Precedence::None },
-        //     TokenType::While => ParseRule { prefix:None, infix: None, precedence: Precedence::None },
-        //     TokenType::Error => ParseRule { prefix:None, infix: None, precedence: Precedence::None },
-        //     TokenType::Eof => ParseRule { prefix:None, infix: None, precedence: Precedence::None },
-            
-        //     _ => ParseRule { prefix:None, infix: None, precedence: Precedence::None }
-        // }
-    }
+    
  
     fn expression(&mut self) {
         self.parse_precedence(Precedence::Assignment);
