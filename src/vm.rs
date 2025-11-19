@@ -14,7 +14,7 @@ pub enum InterpretResult {
 pub struct VM {   
     ip:usize,
     stack:Vec<Value>,  
-    chunk: Rc<Chunk>
+    chunk: Rc<Chunk>,  
 }
 
 impl  VM {
@@ -22,7 +22,7 @@ impl  VM {
         Self { 
             ip:0,
             stack: Vec::new() , 
-            chunk: Rc::new(Chunk::new())          
+            chunk: Rc::new(Chunk::new()),          
         }
     }
 
@@ -57,13 +57,16 @@ impl  VM {
             }
 
             let instruction = self.read_byte();
-            match instruction {             
+            match instruction {   
+                OpCode::Print => {                                      
+                    println!("{}", self.pop());
+                }          
                 OpCode::Return => {
-                    println!("{}", self.stack.pop().unwrap());
+                    //println!("{}", self.stack.pop().unwrap());
                     return Ok(());
                 }
                 OpCode::Constant => {
-                    let constant = self.read_constant();
+                    let constant = self.read_constant().clone();
                     self.stack.push(constant);                   
                 }, 
                 OpCode::Nil => self.stack.push(Value::Nil),
@@ -103,8 +106,8 @@ impl  VM {
         self.stack.pop().unwrap()
     }
 
-    fn peek(&self, distance:usize) -> Value {
-        self.stack[self.stack.len() - distance - 1]
+    fn peek(&self, distance:usize) -> &Value {
+        &self.stack[self.stack.len() - distance - 1]
     }
 
     fn read_byte(&mut self,) -> OpCode {
@@ -113,22 +116,32 @@ impl  VM {
         val
     }
 
-    fn read_constant(&mut self) -> Value {
+    fn read_constant(&mut self) -> &Value {
         let index = self.chunk.read(self.ip) as usize;
         self.ip += 1;
-        self.chunk.get_constant(index)
+        &self.chunk.get_constant(index)
     }
 
     fn binary_op<F>(&mut self, f: F) -> Result<(), InterpretResult>
     where F: Fn(Value, Value) -> Value,   
-    { 
-        if !self.peek(0).is_number()  || !self.peek(1).is_number() {
-            return self.runtime_error(&"Operands must be numbers.")
-        }     
-         let b = self.pop();
-         let a = self.pop();        
-         self.stack.push(f(a, b));
+    {    
+        if self.peek(0).is_string() && self.peek(1).is_string() {
+            let b = self.pop();
+            let a = self.pop();        
+            self.stack.push(f(a, b));
+             Ok(())
+        }
+        else if self.peek(0).is_number()  && self.peek(1).is_number() {
+            let b = self.pop();
+            let a = self.pop();        
+            self.stack.push(f(a, b));
          Ok(())
+           
+        } else {
+            return self.runtime_error(&"Operands must be two numbers or two strings.")
+        }
+              
+        
     }
     
     fn runtime_error<T:ToString>(&mut self, err_msg:&T) -> Result<(), InterpretResult> {

@@ -17,7 +17,8 @@ pub enum OpCode {
     Not,
     Equal,
     Greater,
-    Less,    
+    Less, 
+    Print,   
 }
 
 
@@ -60,8 +61,9 @@ impl Chunk {
         u8::try_from(idx).map_err(|_| ()).ok()
        
     }
+  
 
-    pub fn get_constant(&self, index:usize) -> Value {
+    pub fn get_constant(&self, index:usize) -> &Value {
         self.constants.read_value(index)
     }
 
@@ -98,6 +100,7 @@ impl Chunk {
             OpCode::Equal => self.simple_instruction("OP_EQUAL", offset),
             OpCode::Greater => self.simple_instruction("OP_GREATER", offset),
             OpCode::Less => self.simple_instruction("OP_LESS", offset),
+            OpCode::Print => self.simple_instruction("OP_PRINT", offset),
             
         }
     }
@@ -140,6 +143,7 @@ impl From<u8> for OpCode {
             11 => OpCode::Equal,
             12 => OpCode::Greater,
             13 => OpCode::Less,
+            14 => OpCode::Print,
             _ => unimplemented!("Invalid opcode")
         }
     }
