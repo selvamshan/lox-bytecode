@@ -72,6 +72,9 @@ impl  VM {
                 OpCode::Nil => self.stack.push(Value::Nil),
                 OpCode::True => self.stack.push(Value::Boolean(true)),
                 OpCode::False => self.stack.push(Value::Boolean(false)),
+                OpCode::Pop => {
+                    self.pop();
+                }
                 OpCode::Negate => {
                     //if let Value::Number(_) = self.peek(0)
                     if self.peek(0).is_number()  {
