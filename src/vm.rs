@@ -1,4 +1,5 @@
 use std::rc::Rc;
+use std::collections::HashMap;
 
 use crate::value::*;
 use crate::chunks::*;
@@ -15,6 +16,7 @@ pub struct VM {
     ip:usize,
     stack:Vec<Value>,  
     chunk: Rc<Chunk>,  
+    globals: HashMap<String, Value>,
 }
 
 impl  VM {
@@ -22,7 +24,8 @@ impl  VM {
         Self { 
             ip:0,
             stack: Vec::new() , 
-            chunk: Rc::new(Chunk::new()),          
+            chunk: Rc::new(Chunk::new()),  
+            globals: HashMap::new(),        
         }
     }
 
@@ -85,6 +88,15 @@ impl  VM {
                         
                     }                    
                 },  
+                OpCode::DefineGlobal => {
+                    let constaant = self.read_constant().clone();
+                    if let Value::Str(name) = constaant {
+                        let value = self.pop();
+                        self.globals.insert(name.clone(), value.clone());                        
+                    } else {
+                        panic!("DefineGlobal: constant is not a string");
+                    }
+                }
                 OpCode::Equal => {
                     let b = self.pop();
                     let a = self.pop();
