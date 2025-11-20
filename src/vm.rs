@@ -96,7 +96,19 @@ impl  VM {
                     } else {
                         panic!("DefineGlobal: constant is not a string");
                     }
-                }
+                },
+                OpCode::GetGlobal => {
+                    let constant = self.read_constant().clone();
+                    if let Value::Str(name) = constant {
+                        if let Some(value) = self.globals.get(&name) {
+                            self.stack.push(value.clone());
+                        } else {
+                            return self.runtime_error(&format!("Undefined variable '{:}'", name));
+                        }
+                    } else {
+                        panic!("GetGlobal: constant is not a string");
+                    }
+                },
                 OpCode::Equal => {
                     let b = self.pop();
                     let a = self.pop();

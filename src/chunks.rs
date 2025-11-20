@@ -20,7 +20,8 @@ pub enum OpCode {
     Less, 
     Print, 
     Pop,  
-    DefineGlobal
+    DefineGlobal,
+    GetGlobal,
 }
 
 
@@ -105,6 +106,7 @@ impl Chunk {
             OpCode::Print => self.simple_instruction("OP_PRINT", offset),
             OpCode::Pop => self.simple_instruction("OP_POP", offset),
             OpCode::DefineGlobal => self.constant_instruction("OP_DEFINE_GLOBAL", offset),
+            OpCode::GetGlobal => self.constant_instruction("OP_GET_GLOBAL", offset),          
             
         }
     }
@@ -150,6 +152,7 @@ impl From<u8> for OpCode {
             14 => OpCode::Print,
             15 => OpCode::Pop,
             16 => OpCode::DefineGlobal,
+            17 => OpCode::GetGlobal,
             _ => unimplemented!("Invalid opcode")
         }
     }

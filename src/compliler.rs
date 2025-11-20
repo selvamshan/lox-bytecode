@@ -147,6 +147,7 @@ impl<'a> Compiler<'a> {
                 infix: Some(|c| c.binary()), 
                 precedence: Precedence::Comparison };
             rules[TokenType::String as usize].prefix = Some(|c| c.string()); 
+            rules[TokenType::Identifier as usize].prefix = Some(|c| c.vairable());
           
         Self { 
             parser: Parser::default(),
@@ -297,6 +298,15 @@ impl<'a> Compiler<'a> {
         self.emit_constant(Value::Str(string));
     }
 
+    fn named_variable(&mut self, name:&Token) {
+        let constant = self.identifier_constant(&name);
+        self.emit_bytes(OpCode::GetGlobal, constant);
+    }
+
+    fn vairable(&mut self) {
+        self.named_variable(&self.parser.previous.clone());
+    }
+
     fn unary(&mut self) {
         let operator_type = self.parser.previous.ttype;
 
@@ -327,14 +337,14 @@ impl<'a> Compiler<'a> {
         }
     }
 
-   fn identifier_constant(&mut self, name:&str) -> u8 {
-        self.make_costant(Value::Str(name.to_string()))
+   fn identifier_constant(&mut self, name:&Token) -> u8 {
+        self.make_costant(Value::Str(name.lexeme.clone()))
     }
 
     fn parse_variable(&mut self, error_message:&str) -> u8 {
         self.consume(TokenType::Identifier, error_message); 
         // copy issue       
-        self.identifier_constant(&self.parser.previous.lexeme.to_string())
+        self.identifier_constant(&self.parser.previous.clone())
     }    
 
     fn define_variable(&mut self, global:u8) {
@@ -346,7 +356,7 @@ impl<'a> Compiler<'a> {
     }
 
     fn var_declaration(&mut self)  {
-        let mut global = self.parse_variable("Expect variable name.");
+        let global = self.parse_variable("Expect variable name.");
         if self.is_match(TokenType::Assign) {
             self.expression();
         } else {
