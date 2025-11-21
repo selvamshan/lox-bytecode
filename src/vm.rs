@@ -1,5 +1,6 @@
 use std::rc::Rc;
 use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 
 use crate::value::*;
 use crate::chunks::*;
@@ -107,6 +108,20 @@ impl  VM {
                         }
                     } else {
                         panic!("GetGlobal: constant is not a string");
+                    } 
+                },
+                OpCode::SetGlobal => {
+                    let constant = self.read_constant().clone();
+                    if let Value::Str(name) = constant {
+                        let p = self.peek(0).clone();
+                        if let Entry::Occupied(mut o) = self.globals.entry(name.clone()) {
+                            *o.get_mut() = p;
+                        } else {
+                            return self.runtime_error(&format!("Undefined variable '{:}'", name));  
+                        }
+
+                    } else {
+                        panic!("SetGlobal: constant is not string");
                     }
                 },
                 OpCode::Equal => {
