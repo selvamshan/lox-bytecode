@@ -65,6 +65,10 @@ impl  VM {
                 OpCode::Print => {                                      
                     println!("{}", self.pop());
                 } 
+                OpCode::Jump => {
+                    let offset = self.read_short();
+                    self.ip += offset as usize;
+                }
                 OpCode::JumpIfFalse => {
                     let offset = self.read_short();
                     if self.peek(0).is_falsey() {
