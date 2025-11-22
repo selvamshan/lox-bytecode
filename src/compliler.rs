@@ -159,6 +159,14 @@ impl<'a> Compiler<'a> {
                 precedence: Precedence::Comparison };
             rules[TokenType::String as usize].prefix = Some(|c, b| c.string(b)); 
             rules[TokenType::Identifier as usize].prefix = Some(|c, b| c.vairable(b));
+            rules[TokenType::LessEqual as usize] = ParseRule { 
+                prefix:None, 
+                infix: Some(|c, b| c.and(b)), 
+                precedence: Precedence::And };
+            rules[TokenType::LessEqual as usize] = ParseRule { 
+                prefix:None, 
+                infix: Some(|c, b| c.or(b)), 
+                precedence: Precedence::Or };
           
         Self { 
             parser: Parser::default(),
@@ -333,6 +341,17 @@ impl<'a> Compiler<'a> {
        self.emit_constant(Value::Number(value))
     }
 
+    fn or(&mut self, _:bool) {
+        let else_jump = self.emit_jump(OpCode::JumpIfFalse);
+        let end_jump = self.emit_jump(OpCode::Jump);
+
+        self.patch_jump(else_jump);
+        self.emit_byte(OpCode::Pop.into());
+
+        self.parse_precedence(Precedence::Or);
+        self.patch_jump(end_jump);
+    }
+
     fn string(&mut self, _can_assign:bool) {
         let len = self.parser.previous.lexeme.len() - 1;
         let string = self.parser.previous.lexeme[1..len].to_string();
@@ -473,6 +492,15 @@ impl<'a> Compiler<'a> {
         let len = self.locals.borrow().len();
         self.locals.borrow_mut()[len - 1].depth = Some(self.scope_depth);
        
+    }
+
+    fn and(&mut self, _can_assign:bool) {
+        let end_jump = self.emit_jump(OpCode::JumpIfFalse);
+
+        self.emit_byte(OpCode::Pop.into());
+        self.parse_precedence(Precedence::And);
+
+        self.patch_jump(end_jump);
     }
 
     fn define_variable(&mut self, global:u8) {
