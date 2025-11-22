@@ -7,7 +7,7 @@ use crate::chunks::*;
 use crate::compliler::*;
 
 pub enum InterpretResult {
-    Ok,
+    _Ok,
     CompileError,
     RuntimeError,
 }
@@ -64,7 +64,13 @@ impl  VM {
             match instruction {   
                 OpCode::Print => {                                      
                     println!("{}", self.pop());
-                }          
+                } 
+                OpCode::JumpIfFalse => {
+                    let offset = self.read_short();
+                    if self.peek(0).is_falsey() {
+                        self.ip += offset as usize;
+                    }
+                }         
                 OpCode::Return => {
                     //println!("{}", self.stack.pop().unwrap());
                     return Ok(());
@@ -165,6 +171,12 @@ impl  VM {
         let val:u8 = self.chunk.read(self.ip);
         self.ip += 1;
         val
+    }
+
+    fn read_short(&mut self) -> u16 {
+        self.ip += 2;
+        //((self.chunk.read(self.ip -2) as u16) << 8) | (self.chunk.read(self.ip -1) as u16)
+        self.chunk.get_jump_offset(self.ip - 2) as u16
     }
 
     fn read_constant(&mut self) -> &Value {

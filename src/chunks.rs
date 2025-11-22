@@ -24,7 +24,8 @@ pub enum OpCode {
     GetGlobal,
     SetGlobal,
     GetLocal,
-    SetLocal,    
+    SetLocal, 
+    JumpIfFalse,   
 }
 
 
@@ -48,7 +49,11 @@ impl Chunk {
         self.lines.push(line);
     }
 
-    pub fn write_opcode(&mut self, code:OpCode, line:usize) {
+    pub fn write_at(&mut self, offset:usize, byte:u8) {
+        self.code[offset] = byte;
+    }
+
+    pub fn _write_opcode(&mut self, code:OpCode, line:usize) {
         self.code.push(code.into());
         self.lines.push(line);
     }
@@ -71,6 +76,10 @@ impl Chunk {
 
     pub fn get_constant(&self, index:usize) -> &Value {
         self.constants.read_value(index)
+    }
+
+    pub fn count(&self) -> usize {
+        self.lines.len()
     }
 
     pub fn disassemble<T:ToString>(&self, name: T)
@@ -113,7 +122,7 @@ impl Chunk {
             OpCode::SetGlobal => self.constant_instruction("OP_SET_GLOBAL", offset),
             OpCode::GetLocal => self.byte_instruction("OP_GET_LOCAL", offset),   
             OpCode::SetLocal => self.byte_instruction("OP_SET_LOCAL", offset),      
-            
+            OpCode::JumpIfFalse => self.jump_instruction("OP_JUMP_IF_FALSE", 1, offset),
         }
     }
 
@@ -127,6 +136,21 @@ impl Chunk {
         println!("{:-16} {:4}", name, slot);
         return  offset + 2;
 
+    }
+
+    fn jump_instruction(&self, name:&str,  sign:i16, offset:usize) -> usize {
+        let jump = self.get_jump_offset(offset + 1);
+        let jump_to = if sign == 1{
+            offset  + 3 + jump
+        } else {
+            offset - 3 - jump
+        };   
+        println!("{:-16} {:4} -> {}", name, offset,  jump_to);
+        return offset + 3;
+    }
+
+    pub fn get_jump_offset(&self, offset:usize) -> usize {
+        ((self.code[offset ] as usize) << 8) | self.code[offset + 1 ] as usize
     }
 
     fn constant_instruction(&self, name:&str, offset:usize) -> usize {
@@ -169,6 +193,7 @@ impl From<u8> for OpCode {
             18 => OpCode::SetGlobal,
             19 => OpCode::GetLocal,
             20 => OpCode::SetLocal,
+            21 => OpCode::JumpIfFalse,
             _ => unimplemented!("Invalid opcode")
         }
     }

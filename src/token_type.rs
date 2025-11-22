@@ -27,7 +27,7 @@ pub enum TokenType {
     Number,
 
     // Keywords.
-    Break,
+    //Break,
     And,
     Class,
     Else,
