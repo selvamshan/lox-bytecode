@@ -74,6 +74,10 @@ impl  VM {
                     if self.peek(0).is_falsey() {
                         self.ip += offset as usize;
                     }
+                }
+                OpCode::Loop => {
+                    let offset = self.read_short();
+                    self.ip -= offset as usize;
                 }         
                 OpCode::Return => {
                     //println!("{}", self.stack.pop().unwrap());

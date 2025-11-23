@@ -117,7 +117,7 @@ impl Scanner {
                 }
             }
             'v' => self.check_keyword(1, 2, "ar", TokenType::Var),
-            'w' => self.check_keyword(1, 4, "while", TokenType::While),
+            'w' => self.check_keyword(1, 4, "hile", TokenType::While),
             _ => TokenType::Identifier
         }
     }
