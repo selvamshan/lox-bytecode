@@ -1,31 +1,43 @@
 use std::rc::Rc;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 
 use crate::value::*;
 use crate::chunks::*;
 use crate::compliler::*;
+use crate::error::*;
 
-pub enum InterpretResult {
-    _Ok,
-    CompileError,
-    RuntimeError,
+
+
+pub struct VM {  
+    stack:Vec<Value>,  
+    frames: Vec<CallFrame>,
+    globals: HashMap<String, Value>,
 }
 
+struct CallFrame {
+    function: usize,
+    ip: RefCell<usize>,
+    slots: usize
+}
 
-pub struct VM {   
-    ip:usize,
-    stack:Vec<Value>,  
-    chunk: Rc<Chunk>,  
-    globals: HashMap<String, Value>,
+impl CallFrame {
+    fn inc(&self, val:usize) {
+        *self.ip.borrow_mut() += val;
+    }
+
+    fn dec(&self, val:usize) {
+        *self.ip.borrow_mut() -= val;
+    }
+
 }
 
 impl  VM {
     pub fn new() -> Self{
-        Self { 
-            ip:0,
+        Self {      
             stack: Vec::new() , 
-            chunk: Rc::new(Chunk::new()),  
+            frames: Vec::new(),
             globals: HashMap::new(),        
         }
     }
@@ -36,19 +48,41 @@ impl  VM {
     
 
     pub fn interpret(&mut self, source:&str) -> Result<(),InterpretResult> {
-        let mut chunk = Chunk::new();
-        let mut compiler = Compiler::new(&mut chunk);
-        compiler.compile(source)?;
+        
+        let mut compiler = Compiler::new();
+        let function = compiler.compile(source)?;
 
-        self.ip = 0; 
-        self.chunk = Rc::new(chunk);
+        self.stack.push(Value::Func(function));
+        self.frames.push(CallFrame {
+             function:0,
+             ip: RefCell::new(0),
+             slots: self.stack.len()
+            }
+        );
         self.run()     
     
     }
 
+    fn ip(&self) -> usize {
+        *self.frames.last().unwrap().ip.borrow()
+    }
+
+    fn current_frame(&self) -> &CallFrame {
+        self.frames.last().unwrap()
+    }
+
+    fn chunk(&self) -> Rc<Chunk> {
+        let position = self.frames.last().unwrap().function;
+        if let Value::Func(f) = &self.stack[position] {
+            f.get_chunk()
+        } else {
+            panic!("no chnuk")
+        }
+    }
+
     fn run(&mut self) ->  Result<(), InterpretResult> {
         loop {
-            #[cfg(feature="debug_trace_execution")]
+            #[cfg(any(feature="debug_trace_execution", feature="debug_print_code"))]
             {
                 print!("          ");
                 for slot in &self.stack {
@@ -57,7 +91,7 @@ impl  VM {
                 }
                 println!();
 
-                self.chunk.disassemble_instruction(self.ip);
+                self.chunk().disassemble_instruction(self.ip());
             }
 
             let instruction = self.read_byte().into();
@@ -65,20 +99,20 @@ impl  VM {
                 OpCode::Print => {                                      
                     println!("{}", self.pop());
                 } 
+                 OpCode::Loop => {
+                    let offset = self.read_short();
+                    self.current_frame().dec(offset) ;
+                }      
                 OpCode::Jump => {
                     let offset = self.read_short();
-                    self.ip += offset as usize;
+                    self.current_frame().inc(offset);
                 }
                 OpCode::JumpIfFalse => {
                     let offset = self.read_short();
                     if self.peek(0).is_falsey() {
-                        self.ip += offset as usize;
+                        self.current_frame().inc(offset);
                     }
-                }
-                OpCode::Loop => {
-                    let offset = self.read_short();
-                    self.ip -= offset as usize;
-                }         
+                }                  
                 OpCode::Return => {
                     //println!("{}", self.stack.pop().unwrap());
                     return Ok(());
@@ -104,8 +138,8 @@ impl  VM {
                     }                    
                 },  
                 OpCode::DefineGlobal => {
-                    let constaant = self.read_constant().clone();
-                    if let Value::Str(name) = constaant {
+                    let constant = self.read_constant().clone();
+                    if let Value::Str(name) = constant {
                         let value = self.pop();
                         self.globals.insert(name.clone(), value.clone());                        
                     } else {
@@ -120,9 +154,8 @@ impl  VM {
                         } else {
                             return self.runtime_error(&format!("Undefined variable '{:}'", name));
                         }
-                    } else {
-                        panic!("GetGlobal: constant is not a string");
-                    } 
+                    }
+                   
                 },
                 OpCode::SetGlobal => {
                     let constant = self.read_constant().clone();
@@ -134,18 +167,18 @@ impl  VM {
                             return self.runtime_error(&format!("Undefined variable '{:}'", name));  
                         }
 
-                    } else {
-                        panic!("SetGlobal: constant is not string");
-                    }
+                    } 
+                    
                 },
                 OpCode::GetLocal => {
-                    let slot = self.read_byte();
-                    self.stack.push(self.stack[slot as usize].clone());
+                    let slot = self.read_byte() as usize;
+                    let slot_offest = self.current_frame().slots;
+                    self.stack.push(self.stack[slot_offest + slot].clone());
                 }
                 OpCode::SetLocal => {
-                    let slot = self.read_byte();
-                    let value = self.peek(0).clone();
-                    self.stack[slot as usize] = value;
+                    let slot = self.read_byte() as usize;
+                    let slot_offset = self.current_frame().slots;                   
+                    self.stack[slot_offset + slot] = self.peek(0).clone();
                 }
                 OpCode::Equal => {
                     let b = self.pop();
@@ -167,6 +200,8 @@ impl  VM {
         }
     }
 
+  
+
     fn pop(&mut self) -> Value {
         self.stack.pop().unwrap()
     }
@@ -176,21 +211,21 @@ impl  VM {
     }
 
     fn read_byte(&mut self,) -> u8 {
-        let val:u8 = self.chunk.read(self.ip);
-        self.ip += 1;
+        let val:u8 = self.chunk().read(self.ip());
+        self.current_frame().inc(1);
         val
     }
 
-    fn read_short(&mut self) -> u16 {
-        self.ip += 2;
+    fn read_short(&mut self) -> usize {
+        self.current_frame().inc(2);
         //((self.chunk.read(self.ip -2) as u16) << 8) | (self.chunk.read(self.ip -1) as u16)
-        self.chunk.get_jump_offset(self.ip - 2) as u16
+        self.chunk().get_jump_offset(self.ip() - 2) 
     }
 
-    fn read_constant(&mut self) -> &Value {
-        let index = self.chunk.read(self.ip) as usize;
-        self.ip += 1;
-        &self.chunk.get_constant(index)
+    fn read_constant(&mut self) -> Value {
+        let index = self.chunk().read(self.ip()) as usize;
+        self.current_frame().inc(1);
+        self.chunk().get_constant(index).clone()
     }
 
     fn binary_op<F>(&mut self, f: F) -> Result<(), InterpretResult>
@@ -209,6 +244,7 @@ impl  VM {
          Ok(())
            
         } else {
+            println!("{:?} and {:?}", self.peek(0), self.peek(1));
             return self.runtime_error(&"Operands must be two numbers or two strings.")
         }
               
@@ -216,7 +252,7 @@ impl  VM {
     }
     
     fn runtime_error<T:ToString>(&mut self, err_msg:&T) -> Result<(), InterpretResult> {
-        let line = self.chunk.get_line(self.ip -1);
+        let line = self.chunk().get_line(self.ip() -1);
         eprintln!("{}", err_msg.to_string());
         eprintln!("[Line {:}] in script", line);
         self.reset_stack();

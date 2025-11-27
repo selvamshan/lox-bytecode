@@ -1,17 +1,23 @@
 
 use std::cell:: RefCell;
+use std::rc::Rc;
 
-use crate::{scanner::*, vm::InterpretResult};
+use crate::scanner::*;
 use crate::chunks::*;
 use crate::token::*;
 use crate::token_type::*;
 use crate::value::*;
+use crate::error::*;
+use crate::function::*;
 
 
-pub struct Compiler<'a>{
+
+pub struct Compiler{
     parser: Parser,
     scanner: Scanner,
-    chunk: &'a mut Chunk,
+    chunk: RefCell<Chunk>,  
+    #[cfg(feature="debug_print_code")]
+    current_function: String,
     rules: Vec<ParseRule>,
     locals: RefCell<Vec<Local>>,
     scope_depth: usize,
@@ -95,8 +101,8 @@ impl Precedence {
     */
 }
 
-impl<'a> Compiler<'a> {
-    pub fn new(chunk: &'a mut Chunk) -> Self {
+impl Compiler {
+    pub fn new() -> Self {
         let mut rules = vec![
             ParseRule {
               prefix:None, 
@@ -165,20 +171,26 @@ impl<'a> Compiler<'a> {
                 precedence: Precedence::And };
             rules[TokenType::Or as usize] = ParseRule { 
                 prefix:None, 
-                infix: Some(|c, b| c.or(b)), 
+                infix: Some(Compiler::or), 
                 precedence: Precedence::Or };
-          
+      
         Self { 
             parser: Parser::default(),
             scanner: Scanner::new(&"".to_string()),
-            chunk,
+            chunk: RefCell::new(Chunk::new()),  
+            #[cfg(feature="debug_print_code")]
+            current_function: "<script>".to_string(),      
             rules,
             locals: RefCell::new(Vec::new()),
             scope_depth: 0,
           }
     }
 
-    pub fn compile(&mut self, source: &str) -> Result<(), InterpretResult>{
+    pub fn compile(&mut self, source: &str) -> Result<Function, InterpretResult>{
+        // self.locals.borrow_mut().push(Local { 
+        //     name: Token::default(),
+        //      depth: Some(0) 
+        //     });
         self.scanner = Scanner::new(source);
         self.advance();
         
@@ -191,9 +203,9 @@ impl<'a> Compiler<'a> {
         if *self.parser.had_error.borrow() {
             Err(InterpretResult::CompileError)
         } else {
-            Ok(())
-        }
-        
+            let chunk = self.chunk.replace(Chunk::new());
+            Ok(Function::new(&Rc::new(chunk)))
+        }    
 
     }
 
@@ -233,7 +245,7 @@ impl<'a> Compiler<'a> {
     }
 
     fn emit_byte(&mut self, byte:u8) {
-        self.chunk.write(byte, self.parser.previous.line);
+        self.chunk.borrow_mut().write(byte, self.parser.previous.line);
     }
 
     fn emit_bytes(&mut self, byte1: OpCode, byte2: u8) {
@@ -244,7 +256,7 @@ impl<'a> Compiler<'a> {
     fn emit_loop(&mut self, loop_start:usize) {
         self.emit_byte(OpCode::Loop.into());
 
-        let offset = self.chunk.count() + 2 - loop_start;
+        let offset = self.chunk.borrow().count() + 2 - loop_start;
         if offset > u16::MAX as usize {
             self.error("Loop body too large.");
         }
@@ -257,7 +269,7 @@ impl<'a> Compiler<'a> {
         self.emit_byte(instruction.into());
         self.emit_byte(0xff);
         self.emit_byte(0xff);
-        self.chunk.count() -2
+        self.chunk.borrow().count() -2
     }
 
     fn emit_return(&mut self) {
@@ -265,14 +277,14 @@ impl<'a> Compiler<'a> {
     }
 
     fn make_costant(&mut self, value:Value) -> u8 {
-       match self.chunk.add_constant(value){
-         Some(constant) => constant,
-         None => {
-            self.error(&"Too many constants in one chunk");
-            0
+       if let Some(constant)  = self.chunk.borrow_mut().add_constant(value){
+         constant
+       } else {
+            self.error(&"Too many constants in one chunk");  
+            0          
          }
-       }
     }
+    
 
     fn emit_constant(&mut self, value:Value) {
         let constant = self.make_costant(value);
@@ -280,20 +292,20 @@ impl<'a> Compiler<'a> {
     }
 
     fn patch_jump(&mut self, offset:usize) {
-        let jump = self.chunk.count() - offset - 2;
+        let jump = self.chunk.borrow().count() - offset - 2;
         if jump > u16::MAX as usize {
             self.error("Too mutch code to jump over.");
         }
 
-        self.chunk.write_at(offset, ((jump >> 8) & 0xff) as u8);
-        self.chunk.write_at(offset + 1, (jump & 0xff) as u8);
+        self.chunk.borrow_mut().write_at(offset, ((jump >> 8) & 0xff) as u8);
+        self.chunk.borrow_mut().write_at(offset + 1, (jump & 0xff) as u8);
     }
 
     fn end_compiler(&mut self) {
         self.emit_return();
         #[cfg(feature="debug_print_code")]
         if !*self.parser.had_error.borrow() {
-            self.chunk.disassemble("code");
+            self.chunk.borrow().disassemble(self.current_function.as_str());
         }
     }
 
@@ -572,6 +584,51 @@ impl<'a> Compiler<'a> {
         self.emit_byte(OpCode::Pop.into());
     }
 
+    fn for_statement(&mut self) {
+        self.begin_scope();
+        self.consume(TokenType::LeftParen, "Expect '(' after 'for'.");             
+        if self.is_match(TokenType::SemiColon) {
+            // No initializer.          
+        } else if self.is_match(TokenType::Var) {
+            self.var_declaration();
+        } else {
+            self.expression_statement();
+        }
+ 
+        let mut loop_start = self.chunk.borrow().count();
+        let exit_jump = if !self.is_match(TokenType::SemiColon) {
+            self.expression();
+            self.consume(TokenType::SemiColon, "Expect ';' after loop condition.");
+            
+            let result = self.emit_jump(OpCode::JumpIfFalse);
+            self.emit_byte(OpCode::Pop.into());
+            Some(result)
+        } else {
+            None
+        };        
+
+    
+        if !self.is_match(TokenType::RightParen) {
+            let body_jump = self.emit_jump(OpCode::Jump);
+            let increment_start = self.chunk.borrow().count();
+            self.expression();
+            self.emit_byte(OpCode::Pop.into());            
+            self.consume(TokenType::RightParen, "Expect ')' after for clauses.");
+
+            self.emit_loop(loop_start);
+            loop_start = increment_start;
+            self.patch_jump(body_jump);
+        }        
+
+        self.statement();
+        self.emit_loop(loop_start);
+        if let Some(exit) = exit_jump{
+            self.patch_jump(exit);
+            self.emit_byte(OpCode::Pop.into());
+        }
+        self.end_scope();
+    }
+
     fn print_statement(&mut self) {      
         self.expression();       
         self.consume(TokenType::SemiColon, "Expect ';' after value.");        
@@ -579,7 +636,7 @@ impl<'a> Compiler<'a> {
     }
 
     fn while_statment(&mut self) {
-        let loop_start = self.chunk.count();
+        let loop_start = self.chunk.borrow().count();
         self.consume(TokenType::LeftParen, "Expect '(' after 'while'.");
         self.expression();
         self.consume(TokenType::RightParen, "Excepect ')' after conditions.");
@@ -632,6 +689,8 @@ impl<'a> Compiler<'a> {
     fn statement(&mut self) {
         if self.is_match(TokenType::Print) {
             self.print_statement();
+        } else if self.is_match(TokenType::For) {
+            self.for_statement()
         } else if self.is_match(TokenType::If) {
             self.if_statement();
         } else if self.is_match(TokenType::While) {

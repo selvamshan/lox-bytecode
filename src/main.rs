@@ -10,6 +10,9 @@ mod token_type;
 mod value;
 mod compliler;
 mod scanner;
+mod function;
+mod error;
+use error::*;
 
 fn main() {
     let args: Vec<String> = args().collect();

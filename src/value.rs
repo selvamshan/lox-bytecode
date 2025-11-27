@@ -2,15 +2,21 @@ use std::fmt::Display;
 use std::ops::{Add, Sub, Mul, Div, Neg};
 use std::usize;
 
+use crate::function::*;
 
 
-#[derive(PartialEq, PartialOrd)]
+
+
+#[derive(PartialEq, PartialOrd, Debug)]
 pub enum  Value {
     Boolean(bool),
     Number(f64),
     Nil,
-    Str(String)
+    Str(String),
+    Func(Function)
 }
+
+
 
 impl Clone for Value {
     fn clone(&self) -> Self {
@@ -19,6 +25,7 @@ impl Clone for Value {
             Value::Number(n) => Value::Number(*n),
             Value::Nil => Value::Nil,
             Value::Str(s) => Value::Str(s.clone()),
+            Value::Func(f) => Value::Func(f.clone())
         }
     }
 }
@@ -29,7 +36,8 @@ impl Display for Value {
             Value::Boolean(t) => write!(f, "{t}"),
             Value::Number(n) => write!(f, "{n}"),
             Value::Nil => write!(f, "nil"),
-            Value::Str(s) => write!(f, "{s}")
+            Value::Str(s) => write!(f, "{s}"),
+            Value::Func(func) => write!(f, "{}", func)
         }
     }
 }
@@ -104,7 +112,7 @@ impl Value {
     }
 }
 
-
+#[derive(Clone, Debug)]
 pub struct ValueArray {
     values: Vec<Value>    
 }
@@ -133,7 +141,7 @@ impl ValueArray {
         count
     }
 
-    
+    #[cfg(any(feature="debug_trace_execution", feature="debug_print_code"))]
     pub fn print_value(&self, which: usize) {
         print!("{}", self.values[which])
     }

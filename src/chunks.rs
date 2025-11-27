@@ -31,7 +31,7 @@ pub enum OpCode {
 }
 
 
-
+#[derive(Clone, Debug)]
 pub struct Chunk {
     code: Vec<u8>,
     lines: Vec<usize>,
@@ -90,6 +90,7 @@ impl Chunk {
         self.lines.len()
     }
 
+    #[cfg(any(feature="debug_trace_execution", feature="debug_print_code"))]
     pub fn disassemble<T:ToString>(&self, name: T)
     where T: Display {
         println!("== {} ==", name);
@@ -100,6 +101,7 @@ impl Chunk {
         }
     }
 
+    #[cfg(any(feature="debug_trace_execution", feature="debug_print_code"))]
     pub fn disassemble_instruction(&self, offset:usize) -> usize {
         use JumpStyle::*;
         print!("{:04} ", offset);
@@ -137,11 +139,13 @@ impl Chunk {
         }
     }
 
+    #[cfg(any(feature="debug_trace_execution", feature="debug_print_code"))]
     fn simple_instruction(&self, name:&str, offset:usize) -> usize {
         println!("{name}");
          offset + 1
     }
 
+    #[cfg(any(feature="debug_trace_execution", feature="debug_print_code"))]
     fn byte_instruction(&self, name:&str, offset:usize) -> usize {
         let slot = self.code[offset + 1];
         println!("{:-16} {:4}", name, slot);
@@ -149,6 +153,7 @@ impl Chunk {
 
     }
 
+    #[cfg(any(feature="debug_trace_execution", feature="debug_print_code"))]
     fn jump_instruction(&self, name:&str,  jump_style:JumpStyle, offset:usize) -> usize {
         let jump = self.get_jump_offset(offset + 1);
         let jump_to = if matches!(jump_style, JumpStyle::Forwards) {
@@ -164,6 +169,7 @@ impl Chunk {
         ((self.code[offset ] as usize) << 8) | self.code[offset + 1 ] as usize
     }
 
+    #[cfg(any(feature="debug_trace_execution", feature="debug_print_code"))]
     fn constant_instruction(&self, name:&str, offset:usize) -> usize {
         let constant = self.code[offset + 1];
         print!("{:-16} {:4} '", name, constant);
