@@ -56,7 +56,7 @@ impl  VM {
         self.frames.push(CallFrame {
              function:0,
              ip: RefCell::new(0),
-             slots: self.stack.len()
+             slots: 0//self.stack.len()
             }
         );
         self.run()     

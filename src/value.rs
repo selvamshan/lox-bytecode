@@ -112,7 +112,7 @@ impl Value {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct ValueArray {
     values: Vec<Value>    
 }
