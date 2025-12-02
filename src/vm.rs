@@ -59,8 +59,9 @@ impl  VM {
              slots: 0//self.stack.len()
             }
         );
-        self.run()     
-    
+        let result = self.run();
+        self.stack.pop();    
+        result
     }
 
     fn ip(&self) -> usize {

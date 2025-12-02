@@ -18,15 +18,17 @@ pub struct Compiler{
     parser: Parser,
     scanner: Scanner,    
     result: RefCell<CompilerResult>,  
-   #[cfg(feature="debug_print_code")]
-    current_function: String,//  
+  
 }
 
 #[derive(Default)]
 struct CompilerResult {
-    chunk: RefCell<Chunk>,  // 
-    locals: RefCell<Vec<Local>>,//
-    scope_depth: RefCell<usize>,//
+    chunk: RefCell<Chunk>,  
+    locals: RefCell<Vec<Local>>,
+    scope_depth: RefCell<usize>,
+    arity: RefCell<usize>,
+    #[cfg(feature="debug_print_code")]
+    current_function: RefCell<String>,
 }
 
 enum FindResult {
@@ -36,6 +38,21 @@ enum FindResult {
 }
 
 impl CompilerResult {
+    fn new<T:ToString>(name:T) -> Self {
+        Self {
+            current_function:RefCell::new(name.to_string()),
+            ..Default::default()
+        }
+    }
+    fn arity(&self) -> usize {
+        *self.arity.borrow()
+    }
+
+    fn inc_arity(&self) -> usize {
+        *self.arity.borrow_mut() += 1;
+        *self.arity.borrow()
+    }
+
     fn locals(&self) -> usize {
         self.locals.borrow().len()
     }
@@ -263,9 +280,7 @@ impl Compiler {
             rules,
             parser: Parser::default(),
             scanner: Scanner::new(&"".to_string()),
-            result: RefCell::new(CompilerResult::default()),  
-            #[cfg(feature="debug_print_code")]
-            current_function: "<script>".to_string(),           
+            result: RefCell::new(CompilerResult::default()),                      
           }
     }
 
@@ -287,8 +302,8 @@ impl Compiler {
             Err(InterpretResult::CompileError)
         } else {
             let result = self.result.replace(CompilerResult::default());
-            let chunk = result.chunk.replace(Chunk::new());
-            Ok(Function::new(&Rc::new(chunk)))
+            let chunk = result.chunk.replace(Chunk::new());        
+            Ok(Function::toplevel(&Rc::new(chunk)))
         }    
 
     }
@@ -389,7 +404,7 @@ impl Compiler {
         self.emit_return();
         #[cfg(feature="debug_print_code")]
         if !*self.parser.had_error.borrow() {
-            self.result.borrow().disassemble(self.current_function.as_str());
+            self.result.borrow().disassemble(self.result.borrow().current_function.borrow());
         }
     }
 
@@ -631,19 +646,38 @@ impl Compiler {
     }
 
     fn function(&mut self) {
-        let prev_complier = self.result.replace(CompilerResult::default());
+        let prev_complier = self.result.replace(CompilerResult::new(
+            self.parser.previous.lexeme.clone()
+        ));       
 
         self.begin_scope();
         self.consume(TokenType::LeftParen, "Expect '(' after function name");
+        if !self.check(TokenType::RightParen){           
+            loop {
+                 if self.result.borrow().inc_arity() > 255 {
+                   self.error("Can't have more than 255 parameters.");
+                }
+                let constant = self.parse_variable("Expect parameter name.");
+                self.define_variable(constant);
+                if !self.is_match(TokenType::Comma) {
+                    break;
+                }
+            }
+        }
         self.consume(TokenType::RightParen, "Expect ')' after parameters.");
         self.consume(TokenType::LeftBrace, "Expect '{' before function body");
+
         self.block();
 
         self.end_compiler();
         let result = self.result.replace(prev_complier);
+      
         if !*self.parser.had_error.borrow() {         
             let chunk = result.chunk.replace(Chunk::new());
-            let func = Function::new(&Rc::new(chunk));
+            let func = Function::new(
+            result.current_function.borrow(),
+                 self.result.borrow().arity(),
+                  &Rc::new(chunk));
 
             let constant = self.make_costant(Value::Func(func));
             self.emit_bytes(OpCode::Constant, constant);

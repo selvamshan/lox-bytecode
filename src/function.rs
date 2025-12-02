@@ -3,7 +3,8 @@ use std::rc::Rc;
 
 use crate::chunks::*;
 
-#[derive(Clone, Debug)]
+
+#[derive(Clone, Debug, Default)]
 pub struct Function {
     name:String,
     arity:usize,
@@ -28,16 +29,16 @@ impl Display for Function {
         if self.name.is_empty() {
             return write!(f, "<script>");
         } else {
-            return write!(f, "{}", self.name);
+            return write!(f, "<fn {}>", self.name);
         }      
     }
 }
 
 impl Function{
-    pub fn new(chunk: &Rc<Chunk>) -> Self {
+    pub fn new<T:ToString>(name:T, arity:usize, chunk: &Rc<Chunk>) -> Self {
         Self {
-            name: "".to_string(),
-            arity:0,
+            name:name.to_string(),
+            arity,
             chunk: Rc::clone(chunk)
         }
     }
@@ -45,5 +46,35 @@ impl Function{
     pub fn get_chunk(&self) -> Rc<Chunk> {
         Rc::clone(&self.chunk)
     }
- 
+
+    pub fn toplevel(chunk: &Rc<Chunk>) -> Self {
+        Self {
+            name:"".to_string(),
+            arity:0,
+            chunk: Rc::clone(chunk)
+        }
+    }
+
+    /*
+    pub fn write(&self, byte:u8, line:usize) {
+        self.chunk.borrow_mut().write(byte, line);
+    }
+
+    pub fn count(&self) -> usize {
+        self.chunk.borrow().count()
+    }
+
+    pub fn add_constant(&self, value:Value) -> Option<u8> {
+        self.chunk.borrow_mut().add_constant(value)
+    }
+
+    pub fn write_at(&self, offset:usize, byte:u8) {
+        self.chunk.borrow_mut().write_at(offset, byte);
+    }
+
+    pub fn disassemble<T:ToString>(&self, name:T)
+    where T:Display{
+        self.chunk.borrow().disassemble(name);
+    }
+ */
 }
