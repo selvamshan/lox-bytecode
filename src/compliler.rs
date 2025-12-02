@@ -574,8 +574,10 @@ impl Compiler {
         }        
     }    
 
-    fn mark_initialized(&mut self) {
-        self.result.borrow().set_local_scope();
+    fn mark_initialized(&mut self) {       
+        if self.result.borrow().in_scope() {
+             self.result.borrow().set_local_scope();
+        }
             
     }
 
@@ -626,6 +628,35 @@ impl Compiler {
             self.declaration();
         }
         self.consume(TokenType::RightBrace, "Excpect '}' after block");
+    }
+
+    fn function(&mut self) {
+        let prev_complier = self.result.replace(CompilerResult::default());
+
+        self.begin_scope();
+        self.consume(TokenType::LeftParen, "Expect '(' after function name");
+        self.consume(TokenType::RightParen, "Expect ')' after parameters.");
+        self.consume(TokenType::LeftBrace, "Expect '{' before function body");
+        self.block();
+
+        self.end_compiler();
+        let result = self.result.replace(prev_complier);
+        if !*self.parser.had_error.borrow() {         
+            let chunk = result.chunk.replace(Chunk::new());
+            let func = Function::new(&Rc::new(chunk));
+
+            let constant = self.make_costant(Value::Func(func));
+            self.emit_bytes(OpCode::Constant, constant);
+        }        
+
+     
+    }
+
+    fn fun_declaration(&mut self) {
+        let global = self.parse_variable("Expect function name.");
+        self.mark_initialized();
+        self.function();
+        self.define_variable(global);
     }
 
     fn var_declaration(&mut self)  {
@@ -736,7 +767,9 @@ impl Compiler {
     }
 
     fn declaration(&mut self) { 
-        if self.is_match(TokenType::Var) {
+        if self.is_match(TokenType::Fun) { 
+            self.fun_declaration();           
+        } else if self.is_match(TokenType::Var) {
             self.var_declaration();
         } else {
             self.statement();
