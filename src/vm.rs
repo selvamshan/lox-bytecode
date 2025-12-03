@@ -142,7 +142,7 @@ impl  VM {
                         let value = self.pop();
                         self.stack.push(-value);
                     } else {
-                        return self.runtime_error(&"Operand must be a number");
+                        return self.runtime_error("Operand must be a number");
                         
                     }                    
                 },  
@@ -231,7 +231,7 @@ impl  VM {
         } 
         
         if self.frames.len() == 256 {
-            let _ = self.runtime_error(&"Stack overflow");
+            let _ = self.runtime_error("Stack overflow");
         }
 
         self.frames.push(CallFrame {
@@ -253,7 +253,7 @@ impl  VM {
         };
 
         if !success {
-           let _ = self.runtime_error(&"Can only call functions and classes.");
+           let _ = self.runtime_error("Can only call functions and classes.");
         }
         success
     }
@@ -293,14 +293,14 @@ impl  VM {
            
         } else {
             println!("{:?} and {:?}", self.peek(0), self.peek(1));
-            return self.runtime_error(&"Operands must be two numbers or two strings.")
+            return self.runtime_error("Operands must be two numbers or two strings.")
         }
               
         
     }
     
-    fn runtime_error<T:ToString>(&mut self, err_msg:&T) -> Result<(), InterpretResult> {        
-        eprintln!("{}", err_msg.to_string());
+    fn runtime_error<T:Into<String>>(&mut self, err_msg:T) -> Result<(), InterpretResult> {        
+        eprintln!("{}", err_msg.into());
         for frame in self.frames.iter().rev() {
             if  let Value::Func(function) = &self.stack[frame.function]{
                 let instruction = *frame.ip.borrow() - 1 as usize;

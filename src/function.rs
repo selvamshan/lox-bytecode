@@ -35,9 +35,9 @@ impl Display for Function {
 }
 
 impl Function{
-    pub fn new<T:ToString>(name:T, arity:usize, chunk: &Rc<Chunk>) -> Self {
+    pub fn new<T:Into<String>>(name:T, arity:usize, chunk: &Rc<Chunk>) -> Self {
         Self {
-            name:name.to_string(),
+            name:name.into(),
             arity,
             chunk: Rc::clone(chunk)
         }
