@@ -1,6 +1,5 @@
 
 use std::cell:: RefCell;
-use std::fmt::Display;
 use std::rc::Rc;
 
 use crate::scanner::*;
@@ -27,7 +26,7 @@ struct CompilerResult {
     locals: RefCell<Vec<Local>>,
     scope_depth: RefCell<usize>,
     arity: RefCell<usize>,
-    #[cfg(feature="debug_print_code")]
+    //#[cfg(feature="debug_print_code")]
     current_function: RefCell<String>,
 }
 
@@ -116,10 +115,8 @@ impl CompilerResult {
         self.chunk.borrow_mut().write_at(offset, byte);
     }
    
-     #[cfg(any(feature="debug_trace_execution", feature="debug_print_code"))]
-    fn disassemble<T:ToString>(&self, name:T) 
-    where T: Display
-    {
+    #[cfg(feature = "debug_print_code")]
+    fn disassemble<T:ToString>(&self, name:T) {
         self.chunk.borrow().disassemble(name);
     }
 }
@@ -213,10 +210,11 @@ impl Compiler {
             }; 
             TokenType::NumberOfTokes as usize];
 
-            rules[TokenType::LeftParen as usize] = ParseRule { 
-                prefix:Some(|c, b| c.grouping(b)), 
-                infix: None, 
-                precedence: Precedence::None };
+            rules[TokenType::LeftParen as usize] = ParseRule {
+                prefix: Some(Compiler::grouping),
+                infix: Some(Compiler::call),
+                precedence: Precedence::Call 
+            };          
             rules[TokenType::Minus as usize] = ParseRule { 
                 prefix:Some(|c, b| c.unary(b)),
                 infix: Some(|c, b| c.binary(b)), 
@@ -372,6 +370,7 @@ impl Compiler {
     }
 
     fn emit_return(&mut self) {
+        self.emit_byte(OpCode::Nil.into());
         self.emit_byte(OpCode::Return.into());
     }
 
@@ -403,8 +402,15 @@ impl Compiler {
     fn end_compiler(&mut self) {
         self.emit_return();
         #[cfg(feature="debug_print_code")]
-        if !*self.parser.had_error.borrow() {
-            self.result.borrow().disassemble(self.result.borrow().current_function.borrow());
+        {
+            let name = if self.result.borrow().current_function.borrow().is_empty() {
+                "<script>".to_string()
+            } else {
+                self.result.borrow().current_function.borrow().clone()
+            };
+            if !*self.parser.had_error.borrow() {
+                self.result.borrow().disassemble(name);
+            }
         }
     }
 
@@ -442,6 +448,11 @@ impl Compiler {
            
            _ => todo!()
         }
+    }
+
+    fn call(&mut self, _can_assign:bool) {
+        let arg_count = self.argument_list();
+        self.emit_bytes(OpCode::Call, arg_count);
     }
 
     fn literal(&mut self, _can_assign:bool) {
@@ -596,6 +607,33 @@ impl Compiler {
             
     }
 
+    fn define_variable(&mut self, global:u8) {
+        if !self.result.borrow().in_scope() {
+            self.emit_bytes(OpCode::DefineGlobal, global);
+        } else {
+            self. mark_initialized();
+        }        
+    }
+
+    fn argument_list(&mut self) -> u8 {
+        let mut arg_count = 0;
+        if !self.check(TokenType::RightParen) {
+            loop{
+                self.expression();
+                if arg_count == 255 {
+                    self.error("Can't have more than 255 arguments.");
+                }
+                arg_count += 1;
+                if !self.is_match(TokenType::Comma) {
+                    break;
+                }                
+            }            
+        }
+        self.consume(TokenType::RightParen, "Expect ')' after arguments.");
+        arg_count
+
+    }
+    
     fn and(&mut self, _can_assign:bool) {
         let end_jump = self.emit_jump(OpCode::JumpIfFalse);
 
@@ -605,14 +643,6 @@ impl Compiler {
         self.patch_jump(end_jump);
     }
 
-    fn define_variable(&mut self, global:u8) {
-        if !self.result.borrow().in_scope() {
-            self.emit_bytes(OpCode::DefineGlobal, global);
-        } else {
-            self. mark_initialized();
-        }
-        
-    }
  
     fn expression(&mut self) {
         self.parse_precedence(Precedence::Assignment);       
@@ -670,16 +700,18 @@ impl Compiler {
         self.block();
 
         self.end_compiler();
+        let arity = self.result.borrow().arity();
         let result = self.result.replace(prev_complier);
       
         if !*self.parser.had_error.borrow() {         
             let chunk = result.chunk.replace(Chunk::new());
             let func = Function::new(
-            result.current_function.borrow(),
-                 self.result.borrow().arity(),
-                  &Rc::new(chunk));
+                result.current_function.borrow(),
+                arity,
+                &Rc::new(chunk)
+            );
 
-            let constant = self.make_costant(Value::Func(func));
+            let constant = self.make_costant(Value::Func(Rc::new(func)));
             self.emit_bytes(OpCode::Constant, constant);
         }        
 

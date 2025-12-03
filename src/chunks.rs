@@ -28,6 +28,7 @@ pub enum OpCode {
     JumpIfFalse,   
     Jump,
     Loop,
+    Call,
 }
 
 
@@ -38,6 +39,7 @@ pub struct Chunk {
     constants: ValueArray
 }
 
+#[cfg(any(feature = "debug_trace_execution", feature = "debug_print_code"))]
 #[derive(PartialEq)]
 enum JumpStyle {
     Forwards,
@@ -90,10 +92,10 @@ impl Chunk {
         self.lines.len()
     }
 
-    #[cfg(any(feature="debug_trace_execution", feature="debug_print_code"))]
+    #[cfg(any(feature = "debug_trace_execution", feature = "debug_print_code"))]
     pub fn disassemble<T:ToString>(&self, name: T)
-    where T: Display {
-        println!("== {} ==", name);
+    {
+        println!("== {} ==", name.to_string());
 
         let mut offset = 0;
         while offset < self.code.len() {
@@ -101,7 +103,7 @@ impl Chunk {
         }
     }
 
-    #[cfg(any(feature="debug_trace_execution", feature="debug_print_code"))]
+    #[cfg(any(feature = "debug_trace_execution", feature = "debug_print_code"))]
     pub fn disassemble_instruction(&self, offset:usize) -> usize {
         use JumpStyle::*;
         print!("{:04} ", offset);
@@ -110,6 +112,7 @@ impl Chunk {
         } else {
             print!("{:4} ", self.lines[offset]);
         }
+
         let instruction:OpCode = self.code[offset].into();
         match instruction {
             OpCode::Constant => self.constant_instruction("OP_CONSTANT", offset),  
@@ -136,10 +139,11 @@ impl Chunk {
             OpCode::JumpIfFalse => self.jump_instruction("OP_JUMP_IF_FALSE", Forwards, offset),
             OpCode::Jump => self.jump_instruction("OP_JUMP", Forwards, offset),
             OpCode::Loop => self.jump_instruction("OP_LOOP", Backwards, offset),
+            OpCode::Call => self.byte_instruction("OP_CALL", offset),
         }
     }
 
-    #[cfg(any(feature="debug_trace_execution", feature="debug_print_code"))]
+   #[cfg(any(feature="debug_trace_execution", feature="debug_print_code"))]
     fn simple_instruction(&self, name:&str, offset:usize) -> usize {
         println!("{name}");
          offset + 1
@@ -213,6 +217,7 @@ impl From<u8> for OpCode {
             21 => OpCode::JumpIfFalse,
             22 => OpCode::Jump,
             23 => OpCode::Loop,
+            24 => OpCode::Call,
             _ => unimplemented!("Invalid opcode")
         }
     }

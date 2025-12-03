@@ -54,27 +54,16 @@ impl Function{
             chunk: Rc::clone(chunk)
         }
     }
-
-    /*
-    pub fn write(&self, byte:u8, line:usize) {
-        self.chunk.borrow_mut().write(byte, line);
+  
+    pub fn arity(&self) -> usize {
+        self.arity
     }
 
-    pub fn count(&self) -> usize {
-        self.chunk.borrow().count()
+    pub fn stack_name(&self) -> &str {
+        if self.name.is_empty(){
+            "script"
+        } else {
+            self.name.as_str()
+        }
     }
-
-    pub fn add_constant(&self, value:Value) -> Option<u8> {
-        self.chunk.borrow_mut().add_constant(value)
-    }
-
-    pub fn write_at(&self, offset:usize, byte:u8) {
-        self.chunk.borrow_mut().write_at(offset, byte);
-    }
-
-    pub fn disassemble<T:ToString>(&self, name:T)
-    where T:Display{
-        self.chunk.borrow().disassemble(name);
-    }
- */
 }

@@ -1,6 +1,7 @@
 use std::fmt::Display;
+use std::rc::Rc;
 use std::ops::{Add, Sub, Mul, Div, Neg};
-use std::usize;
+
 
 use crate::function::*;
 
@@ -13,7 +14,7 @@ pub enum  Value {
     Number(f64),
     Nil,
     Str(String),
-    Func(Function)
+    Func(Rc<Function>)
 }
 
 
@@ -25,7 +26,7 @@ impl Clone for Value {
             Value::Number(n) => Value::Number(*n),
             Value::Nil => Value::Nil,
             Value::Str(s) => Value::Str(s.clone()),
-            Value::Func(f) => Value::Func(f.clone())
+            Value::Func(f) => Value::Func(Rc::clone(f))
         }
     }
 }
