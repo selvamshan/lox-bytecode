@@ -132,14 +132,14 @@ impl Scanner {
     }
 
     fn number(&mut self) -> Token {
-        while self.peek().is_digit(10) {
+        while self.peek().is_ascii_digit() {
            self.advance();
         }
 
-        if self.peek() == '.' && self.peek_next().unwrap().is_digit(10) {
+        if self.peek() == '.' && self.peek_next().unwrap().is_ascii_digit() {
             self.advance();
 
-            while self.peek().is_digit(10) {
+            while self.peek().is_ascii_digit() {
                 self.advance();
             }        
         }
@@ -157,7 +157,7 @@ impl Scanner {
         }
 
         if self.is_at_end() {
-            return self.error_token("Unterminated string.");
+            self.error_token("Unterminated string.")
         } else {
             self.advance();
             self.make_token(TokenType::String)       
@@ -172,7 +172,7 @@ impl Scanner {
 
     fn make_token(&self, ttype:TokenType) -> Token {
         Token { 
-            ttype: ttype, 
+            ttype,
             lexeme: self.source[self.start..self.current].iter().collect(), 
             line: self.line
         }

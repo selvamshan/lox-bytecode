@@ -1,4 +1,6 @@
-use std::fmt::Display;
+use std::any::Any;
+use std::cmp::Ordering;
+use std::fmt::{Debug, Display,Result};
 use std::rc::Rc;
 use std::ops::{Add, Sub, Mul, Div, Neg};
 
@@ -6,18 +8,53 @@ use std::ops::{Add, Sub, Mul, Div, Neg};
 use crate::function::*;
 
 
+pub trait NativeFunc {
+    fn call(&self, arg_count:usize, args: &[Value]) -> Value;   
+}
 
 
-#[derive(PartialEq, PartialOrd, Debug)]
+#[derive(Debug)]
 pub enum  Value {
     Boolean(bool),
     Number(f64),
     Nil,
     Str(String),
-    Func(Rc<Function>)
+    Func(Rc<Function>),
+    Native(Rc<dyn NativeFunc>)
 }
 
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        match(self, other) {
+            (Value::Boolean(a), Value::Boolean(b)) => a.eq(b),
+            (Value::Number(a), Value::Number(b)) => a.eq(b),
+            (Value::Str(a), Value::Str(b)) => a.cmp(b) == Ordering::Equal,
+            (Value::Nil, Value::Nil) => true,
+            (Value::Func(a), Value::Func(b)) => Rc::ptr_eq(a, b),
+            (Value::Native(a), Value::Native(b)) => {
+                a.type_id() == b.type_id()
+            },
+            _ => false
+        }
+    }
+}
 
+impl PartialOrd for Value {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match(self, other) {
+            (Value::Boolean(a), Value::Boolean(b)) => a.partial_cmp(b),
+            (Value::Number(a), Value::Number(b)) => a.partial_cmp(b),
+            (Value::Str(a), Value::Str(b)) => a.partial_cmp(b),
+            _ => None
+        }
+    }
+}
+
+impl Debug for dyn NativeFunc {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result {
+        write!(f, "<native fn")
+    }
+}
 
 impl Clone for Value {
     fn clone(&self) -> Self {
@@ -26,19 +63,21 @@ impl Clone for Value {
             Value::Number(n) => Value::Number(*n),
             Value::Nil => Value::Nil,
             Value::Str(s) => Value::Str(s.clone()),
-            Value::Func(f) => Value::Func(Rc::clone(f))
+            Value::Func(f) => Value::Func(Rc::clone(f)),
+            Value::Native(f) => Value::Native(Rc::clone(f))
         }
     }
 }
 
 impl Display for Value {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result {
         match  self {
             Value::Boolean(t) => write!(f, "{t}"),
             Value::Number(n) => write!(f, "{n}"),
             Value::Nil => write!(f, "nil"),
             Value::Str(s) => write!(f, "{s}"),
-            Value::Func(func) => write!(f, "{}", func)
+            Value::Func(func) => write!(f, "{}", func), 
+            Value::Native(_) => write!(f, "<native fn>")
         }
     }
 }

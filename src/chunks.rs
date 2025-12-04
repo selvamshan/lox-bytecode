@@ -153,8 +153,7 @@ impl Chunk {
     fn byte_instruction(&self, name:&str, offset:usize) -> usize {
         let slot = self.code[offset + 1];
         println!("{:-16} {:4}", name, slot);
-        return  offset + 2;
-
+        offset + 2
     }
 
     #[cfg(any(feature="debug_trace_execution", feature="debug_print_code"))]
@@ -166,7 +165,7 @@ impl Chunk {
             offset + 3 - jump
         };   
         println!("{:-16} {:4} -> {}", name, offset,  jump_to);
-        return offset + 3;
+        offset + 3
     }
 
     pub fn get_jump_offset(&self, offset:usize) -> usize {

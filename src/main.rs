@@ -13,6 +13,7 @@ mod scanner;
 mod function;
 mod error;
 use error::*;
+mod native;
 
 fn main() {
     let args: Vec<String> = args().collect();

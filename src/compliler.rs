@@ -20,17 +20,18 @@ pub struct Compiler{
   
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Default)]
 enum ChnukType {
+    #[default]
     Script,
     Function
 }
 
-impl Default for ChnukType {
-    fn default() -> Self {
-        ChnukType::Script
-    }
-}
+// impl Default for ChnukType {
+//     fn default() -> Self {
+//         ChnukType::Script
+//     }
+// }
 
 #[derive(Default)]
 struct CompilerResult {
@@ -92,7 +93,7 @@ impl CompilerResult {
     }
 
     fn is_scope_popapable(&self) -> bool {
-        self.locals.borrow().len() > 0 && 
+        !self.locals.borrow().is_empty() && 
         self.locals.borrow().last().unwrap().depth.unwrap() > *self.scope_depth.borrow() 
     }
 
@@ -290,7 +291,7 @@ impl Compiler {
         Self { 
             rules,
             parser: Parser::default(),
-            scanner: Scanner::new(&"".to_string()),
+            scanner: Scanner::new(""),
             result: RefCell::new(CompilerResult::default()),                      
           }
     }
@@ -391,7 +392,7 @@ impl Compiler {
        if let Some(constant)  = self.result.borrow().add_constant(value){
          constant
        } else {
-            self.error(&"Too many constants in one chunk");  
+            self.error("Too many constants in one chunk");  
             0          
          }
     }
@@ -534,7 +535,7 @@ impl Compiler {
 
     fn vairable(&mut self, can_assign:bool) {
         let name = &self.parser.previous.clone();
-        self.named_variable(&name, can_assign);
+        self.named_variable(name, can_assign);
     }
 
     fn unary(&mut self, _can_assign:bool) {
@@ -564,8 +565,7 @@ impl Compiler {
                  if can_assign && self.is_match(TokenType::Assign) {
                     self.error("Invalid assigment target");
                  }
-               }
-               return;
+               }               
         } else {
             self.error("Expect Expression.");
         }

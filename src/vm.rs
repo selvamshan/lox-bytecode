@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 
 
+use crate::native::*;
 use crate::value::*;
 use crate::chunks::*;
 use crate::compliler::*;
@@ -36,11 +37,14 @@ impl CallFrame {
 
 impl  VM {
     pub fn new() -> Self{
-        Self {      
+        let mut vm =  Self {      
             stack: Vec::new() , 
             frames: Vec::new(),
             globals: HashMap::new(),        
-        }
+        };
+        let f: Rc<dyn NativeFunc> = Rc::new(NativeClock {});
+        vm.define_native("clock", &f);
+        vm
     }
 
     pub fn reset_stack(&mut self) {
@@ -161,7 +165,7 @@ impl  VM {
                         if let Some(value) = self.globals.get(&name) {
                             self.stack.push(value.clone());
                         } else {
-                            return self.runtime_error(&format!("Undefined variable '{:}'", name));
+                            return self.runtime_error(format!("Undefined variable '{:}'", name));
                         }
                     }
                    
@@ -173,7 +177,7 @@ impl  VM {
                         if let Entry::Occupied(mut o) = self.globals.entry(name.clone()) {
                             *o.get_mut() = p;
                         } else {
-                            return self.runtime_error(&format!("Undefined variable '{:}'", name));  
+                            return self.runtime_error(format!("Undefined variable '{:}'", name));  
                         }
 
                     } 
@@ -226,7 +230,7 @@ impl  VM {
             panic!("tried to call a non-function");
         };
         if arity != arg_count{
-            let _ = self.runtime_error(&format!("Expected {arity} arguments but got {arg_count}"));
+            let _ = self.runtime_error(format!("Expected {arity} arguments but got {arg_count}"));
             return false;
         } 
         
@@ -249,6 +253,16 @@ impl  VM {
             Value::Func(_) => {
                  return self.call(arg_count); 
                 }
+            Value::Native(f) => {
+                let stack_top = self.stack.len();
+                let result = f.call(
+                    arg_count,
+                    &self.stack[stack_top - arg_count..stack_top]
+                );
+                self.stack.truncate(stack_top - arg_count + 1);
+                self.stack.push(result);
+                return true;
+            },
             _ => false
         };
 
@@ -279,13 +293,13 @@ impl  VM {
     fn binary_op<F>(&mut self, f: F) -> Result<(), InterpretResult>
     where F: Fn(Value, Value) -> Value,   
     {    
-        if self.peek(0).is_string() && self.peek(1).is_string() {
-            let b = self.pop();
-            let a = self.pop();        
-            self.stack.push(f(a, b));
-             Ok(())
-        }
-        else if self.peek(0).is_number()  && self.peek(1).is_number() {
+        if (self.peek(0).is_string() && self.peek(1).is_string()) || //{
+        //     let b = self.pop();
+        //     let a = self.pop();        
+        //     self.stack.push(f(a, b));
+        //      Ok(())
+        // }
+         (self.peek(0).is_number()  && self.peek(1).is_number()) {
             let b = self.pop();
             let a = self.pop();        
             self.stack.push(f(a, b));
@@ -293,7 +307,7 @@ impl  VM {
            
         } else {
             println!("{:?} and {:?}", self.peek(0), self.peek(1));
-            return self.runtime_error("Operands must be two numbers or two strings.")
+            self.runtime_error("Operands must be two numbers or two strings.")
         }
               
         
@@ -303,16 +317,19 @@ impl  VM {
         eprintln!("{}", err_msg.into());
         for frame in self.frames.iter().rev() {
             if  let Value::Func(function) = &self.stack[frame.function]{
-                let instruction = *frame.ip.borrow() - 1 as usize;
+                let instruction = *frame.ip.borrow() - 1_usize;
                 let line = function.get_chunk().get_line(instruction);
                 eprintln!("[line {line} in {}", function.stack_name());
             } else {
                 panic!("tried to get a stack trace");
             }
-        }
-        //eprintln!("[Line {:}] in script", line);
+        }       
         self.reset_stack();
         Err(InterpretResult::RuntimeError)
+    }
+
+    fn define_native<T:Into<String>>(&mut self, name:T, function:&Rc<dyn NativeFunc>) {
+        self.globals.insert(name.into(), Value::Native(Rc::clone(function)));
     }
   
     

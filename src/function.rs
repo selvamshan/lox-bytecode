@@ -27,9 +27,9 @@ impl PartialEq for Function {
 impl Display for Function {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.name.is_empty() {
-            return write!(f, "<script>");
+            write!(f, "<script>")
         } else {
-            return write!(f, "<fn {}>", self.name);
+            write!(f, "<fn {}>", self.name)
         }      
     }
 }
