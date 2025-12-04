@@ -20,14 +20,26 @@ pub struct Compiler{
   
 }
 
+#[derive(PartialEq)]
+enum ChnukType {
+    Script,
+    Function
+}
+
+impl Default for ChnukType {
+    fn default() -> Self {
+        ChnukType::Script
+    }
+}
+
 #[derive(Default)]
 struct CompilerResult {
     chunk: RefCell<Chunk>,  
     locals: RefCell<Vec<Local>>,
     scope_depth: RefCell<usize>,
-    arity: RefCell<usize>,
-    //#[cfg(feature="debug_print_code")]
+    arity: RefCell<usize>, 
     current_function: RefCell<String>,
+    ctype: ChnukType
 }
 
 enum FindResult {
@@ -37,9 +49,10 @@ enum FindResult {
 }
 
 impl CompilerResult {
-    fn new<T:Into<String>>(name:T) -> Self {
+    fn new<T:Into<String>>(name:T, ctype:ChnukType) -> Self {
         Self {
             current_function:RefCell::new(name.into()),
+            ctype,
             ..Default::default()
         }
     }
@@ -502,8 +515,7 @@ impl Compiler {
             FindResult::Depth(d) => Some(d)
         }
         
-    }
-    
+    }    
 
     fn named_variable(&mut self, name:&Token, can_assign:bool) {
         
@@ -512,8 +524,6 @@ impl Compiler {
         } else {
             (self.identifier_constant(name), OpCode::GetGlobal, OpCode::SetGlobal)
         };       
-
-        
         if can_assign && self.is_match(TokenType::Assign) {
             self.expression();
             self.emit_bytes(set_op, arg);
@@ -677,7 +687,8 @@ impl Compiler {
 
     fn function(&mut self) {
         let prev_complier = self.result.replace(CompilerResult::new(
-            self.parser.previous.lexeme.clone()
+            self.parser.previous.lexeme.clone(),
+            ChnukType::Function
         ));       
 
         self.begin_scope();
@@ -793,6 +804,19 @@ impl Compiler {
         self.emit_byte(OpCode::Print);       
     }
 
+    fn return_statement(&mut self) {   
+        if self.result.borrow().ctype == ChnukType::Script {
+            self.error("Can't return from top-level code.");
+        }   
+        if self.is_match(TokenType::SemiColon) {
+            self.emit_return();
+        } else {
+            self.expression();
+            self.consume(TokenType::SemiColon, "Expect ';' after return value");
+            self.emit_byte(OpCode::Return);
+        }
+    }
+
     fn while_statment(&mut self) {
         let loop_start = self.result.borrow().count();
         self.consume(TokenType::LeftParen, "Expect '(' after 'while'.");
@@ -852,7 +876,9 @@ impl Compiler {
         } else if self.is_match(TokenType::For) {
             self.for_statement()
         } else if self.is_match(TokenType::If) {
-            self.if_statement();
+            self.if_statement();         
+        } else if self.is_match(TokenType::Return){
+            self.return_statement();
         } else if self.is_match(TokenType::While) {
             self.while_statment();
         } else if self.is_match(TokenType::LeftBrace) {
