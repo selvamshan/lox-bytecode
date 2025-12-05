@@ -6,6 +6,7 @@ use std::ops::{Add, Sub, Mul, Div, Neg};
 
 
 use crate::function::*;
+use crate::closure::*;
 
 
 pub trait NativeFunc {
@@ -20,7 +21,8 @@ pub enum  Value {
     Nil,
     Str(String),
     Func(Rc<Function>),
-    Native(Rc<dyn NativeFunc>)
+    Native(Rc<dyn NativeFunc>),
+    Closure(Rc<Closure>)
 }
 
 impl PartialEq for Value {
@@ -33,7 +35,8 @@ impl PartialEq for Value {
             (Value::Func(a), Value::Func(b)) => Rc::ptr_eq(a, b),
             (Value::Native(a), Value::Native(b)) => {
                 a.type_id() == b.type_id()
-            },
+            },  
+            (Value::Closure(a), Value::Closure(b)) => Rc::ptr_eq(a, b),          
             _ => false
         }
     }
@@ -64,7 +67,8 @@ impl Clone for Value {
             Value::Nil => Value::Nil,
             Value::Str(s) => Value::Str(s.clone()),
             Value::Func(f) => Value::Func(Rc::clone(f)),
-            Value::Native(f) => Value::Native(Rc::clone(f))
+            Value::Native(f) => Value::Native(Rc::clone(f)),
+            Value::Closure(f) => Value::Closure(Rc::clone(f)),
         }
     }
 }
@@ -77,7 +81,8 @@ impl Display for Value {
             Value::Nil => write!(f, "nil"),
             Value::Str(s) => write!(f, "{s}"),
             Value::Func(func) => write!(f, "{}", func), 
-            Value::Native(_) => write!(f, "<native fn>")
+            Value::Native(_) => write!(f, "<native fn>"),
+            Value::Closure(c) => write!(f, "{c}"),
         }
     }
 }

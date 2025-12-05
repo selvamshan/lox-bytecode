@@ -14,6 +14,8 @@ mod function;
 mod error;
 use error::*;
 mod native;
+mod closure;
+
 
 fn main() {
     let args: Vec<String> = args().collect();

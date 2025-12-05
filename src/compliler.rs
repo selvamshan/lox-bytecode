@@ -51,7 +51,13 @@ enum FindResult {
 
 impl CompilerResult {
     fn new<T:Into<String>>(name:T, ctype:ChnukType) -> Self {
+        let locals = RefCell::new(Vec::new());
+        locals.borrow_mut().push(Local {
+            name: Token::default(),
+            depth: Some(0)
+        });
         Self {
+            locals,
             current_function:RefCell::new(name.into()),
             ctype,
             ..Default::default()
@@ -297,10 +303,10 @@ impl Compiler {
     }
 
     pub fn compile(&mut self, source: &str) -> Result<Function, InterpretResult>{
-        self.result.borrow().push(Local { 
-            name: Token::default(),
-             depth: Some(0) 
-            });
+        // self.result.borrow().push(Local { 
+        //     name: Token::default(),
+        //      depth: Some(0) 
+        //     });
         self.scanner = Scanner::new(source);
         self.advance();
         
@@ -723,7 +729,7 @@ impl Compiler {
             );
 
             let constant = self.make_costant(Value::Func(Rc::new(func)));
-            self.emit_bytes(OpCode::Constant, constant);
+            self.emit_bytes(OpCode::Closure, constant);
         }        
 
      
