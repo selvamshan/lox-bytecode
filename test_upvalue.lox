@@ -6,6 +6,10 @@ fun outer() {
     var d = 4;
     fun inner() {
       print a + c + b + d;
-    }
+    } 
+    inner();   
   }
+  middle();
 }
+
+outer();

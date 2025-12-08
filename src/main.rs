@@ -15,6 +15,7 @@ mod error;
 use error::*;
 mod native;
 mod closure;
+mod upvalue;
 
 
 fn main() {

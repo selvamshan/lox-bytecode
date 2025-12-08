@@ -10,7 +10,7 @@ use crate::closure::*;
 
 
 pub trait NativeFunc {
-    fn call(&self, arg_count:usize, args: &[Value]) -> Value;   
+    fn call(&self, arg_count:usize, args: &[Rc<Value>]) -> Value;   
 }
 
 
@@ -22,7 +22,7 @@ pub enum  Value {
     Str(String),
     Func(Rc<Function>),
     Native(Rc<dyn NativeFunc>),
-    Closure(Rc<Closure>)
+    Closure(Rc<Closure>),    
 }
 
 impl PartialEq for Value {
@@ -35,7 +35,7 @@ impl PartialEq for Value {
             (Value::Func(a), Value::Func(b)) => Rc::ptr_eq(a, b),
             (Value::Native(a), Value::Native(b)) => {
                 a.type_id() == b.type_id()
-            },  
+            },            
             (Value::Closure(a), Value::Closure(b)) => Rc::ptr_eq(a, b),          
             _ => false
         }
@@ -68,7 +68,7 @@ impl Clone for Value {
             Value::Str(s) => Value::Str(s.clone()),
             Value::Func(f) => Value::Func(Rc::clone(f)),
             Value::Native(f) => Value::Native(Rc::clone(f)),
-            Value::Closure(f) => Value::Closure(Rc::clone(f)),
+            Value::Closure(f) => Value::Closure(Rc::clone(f)),                   
         }
     }
 }
@@ -82,7 +82,7 @@ impl Display for Value {
             Value::Str(s) => write!(f, "{s}"),
             Value::Func(func) => write!(f, "{}", func), 
             Value::Native(_) => write!(f, "<native fn>"),
-            Value::Closure(c) => write!(f, "{c}"),
+            Value::Closure(c) => write!(f, "{c}"),           
         }
     }
 }
@@ -169,18 +169,7 @@ impl ValueArray {
          }
     }
 
-    pub fn write(&mut self, value:Value) -> usize {
-        /* String probing 
-        if let Value::Str(s) = value.clone() {
-            for (i, v) in self.values .iter().enumerate() {
-                if let Value::Str(existing) = v {
-                    if existing == &s {
-                        return i;
-                    }
-                }
-            }
-        } 
-        */
+    pub fn write(&mut self, value:Value) -> usize {      
         let count = self.values.len();
         self.values.push(value);
         count

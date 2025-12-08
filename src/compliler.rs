@@ -28,7 +28,7 @@ enum ChnukType {
 }
 
 #[derive(Default, PartialEq)]
-struct Upvlaue {
+struct UpvlaueData {
     is_local: bool,
     index: u8,
 }
@@ -42,7 +42,7 @@ struct CompilerResult {
     current_function: RefCell<String>,
     ctype: ChnukType,
     enclosing: RefCell<Option<Rc<CompilerResult>>>,
-    upvalues: RefCell<Vec<Upvlaue>>
+    upvalues: RefCell<Vec<UpvlaueData>>
 }
 
 enum FindResult {
@@ -102,7 +102,7 @@ impl CompilerResult {
     }
 
     fn add_upvalue(&self, index:u8, is_local: bool) -> Result<u8, FindResult> {
-        let upvlaue = Upvlaue {index, is_local};
+        let upvlaue = UpvlaueData {index, is_local};
         if let Some(pos) = self.upvalues
         .borrow()
         .iter()
@@ -251,18 +251,8 @@ impl Precedence {
         let p = self as usize;
         (p + 1).into()
         
-    }
-    
-    /*
-    fn previous(self) -> Self {
-        if self == Precedence::None {
-            panic!("no previous precedence berfore None")
-        } 
-        let p = self as usize;
-        (p - 1).into()       
-        
-    }
-    */
+    }    
+  
 }
 
 impl Compiler {
