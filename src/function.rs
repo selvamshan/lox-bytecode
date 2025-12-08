@@ -4,22 +4,34 @@ use std::rc::Rc;
 use crate::chunks::*;
 
 
-#[derive(Clone, Debug, Default)]
+#[derive(Debug, Default)]
 pub struct Function {
     name:String,
     arity:usize,
-    pub chunk:Rc<Chunk>
+    pub chunk:Rc<Chunk>,
+    upvalue_count:usize,
 }
 
 impl PartialOrd for Function {
     fn partial_cmp(&self, _other: &Self) -> Option<std::cmp::Ordering> {
-        todo!()
+        panic!("Comparing the ord of the two funtions")
     }
 }
 
 impl PartialEq for Function {
     fn eq(&self, _other: &Self) -> bool {
-        false
+        todo!()
+    }
+}
+
+impl Clone for Function {
+    fn clone(&self) -> Self {
+        Function { 
+            name: self.name.clone(),
+            arity: self.arity,
+             chunk: self.chunk.clone(), 
+             upvalue_count: self.upvalue_count
+        }
     }
 }
 
@@ -35,11 +47,13 @@ impl Display for Function {
 }
 
 impl Function{
-    pub fn new<T:Into<String>>(name:T, arity:usize, chunk: &Rc<Chunk>) -> Self {
+    pub fn new<T:Into<String>>(
+        name:T, arity:usize, chunk: &Rc<Chunk>, upvalue_count:usize) -> Self {
         Self {
             name:name.into(),
             arity,
-            chunk: Rc::clone(chunk)
+            chunk: Rc::clone(chunk),
+            upvalue_count
         }
     }
 
@@ -51,7 +65,8 @@ impl Function{
         Self {
             name:"".to_string(),
             arity:0,
-            chunk: Rc::clone(chunk)
+            chunk: Rc::clone(chunk),
+            upvalue_count:0
         }
     }
   
@@ -65,5 +80,9 @@ impl Function{
         } else {
             self.name.as_str()
         }
+    }
+
+    pub fn upvalue(&self) -> usize {
+        self.upvalue_count
     }
 }

@@ -102,6 +102,8 @@ impl  VM {
                 OpCode::Print => {                                      
                     println!("{}", self.pop());
                 } 
+                OpCode::GetUpvalue => todo!(),
+                OpCode::SetUpvalue => todo!(),
                 OpCode::Closure => {
                      let constant = self.read_constant().clone();  
                      if let Value::Func(function) = constant {

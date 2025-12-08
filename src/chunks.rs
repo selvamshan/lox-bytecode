@@ -30,6 +30,8 @@ pub enum OpCode {
     Loop,
     Call,
     Closure,
+    GetUpvalue,
+    SetUpvalue
 }
 
 
@@ -142,14 +144,27 @@ impl Chunk {
             OpCode::Loop => self.jump_instruction("OP_LOOP", Backwards, offset),
             OpCode::Call => self.byte_instruction("OP_CALL", offset),
             OpCode::Closure => {
-                let mut index = offset + 1;
-                let constant = self.code[index];
-                index += 1;
-                print!("{:-16} {:4}" ,"OP_CLOSURE", constant);
+                let mut i = offset + 1;
+                let constant = self.code[i];
+                i += 1;
+                print!("{:-16} {:4} " ,"OP_CLOSURE", constant);
                 self.constants.print_value(constant as usize);
                 println!();
-                index
-            }
+                if let Value::Func(function) = self.constants.read_value(constant as usize) {
+                    for _j in 0..function.upvalue(){
+                        let is_local = if self.code[i] == 0 {"upvalue"} else {"local"};
+                        i += 1;
+                        let index = self.code[i];
+                        i += 1;
+                        println!("{:04}      |                     {is_local} {index}", i - 2 )
+                    }
+                } else {
+                    panic!("No function at position {constant}")
+                }
+                i
+            },
+            OpCode::GetUpvalue => self.byte_instruction("OP_GET_UPVALUE", offset),
+            OpCode::SetUpvalue => self.byte_instruction("OP_SET_UPVALUE", offset),
         }
     }
 
@@ -228,6 +243,8 @@ impl From<u8> for OpCode {
             23 => OpCode::Loop,
             24 => OpCode::Call,
             25 => OpCode::Closure,
+            26 => OpCode::GetUpvalue,
+            27 => OpCode::SetUpvalue,
             _ => unimplemented!("Invalid opcode")
         }
     }
