@@ -15,6 +15,7 @@ use error::*;
 mod closure;
 mod native;
 mod upvalue;
+mod class;
 
 fn main() {
     let args: Vec<String> = args().collect();

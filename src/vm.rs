@@ -10,6 +10,7 @@ use crate::compliler::*;
 use crate::error::*;
 use crate::native::*;
 use crate::value::*;
+use crate::class::*;
 
 pub struct VM {
     stack: Vec<Rc<RefCell<Value>>>,
@@ -118,7 +119,16 @@ impl VM {
             match instruction {
                 OpCode::Print => {
                     println!("{}", self.pop().borrow());
-                }               
+                }
+                OpCode::Class => {
+                    let constant = self.read_constant().clone();
+                    let class_string = if let Value::Str(s) = constant {
+                        s
+                    } else {
+                        panic!("Unable to get class name from tables");
+                    };
+                    self.push(Value::Class(Rc::new(Class::new(class_string))));
+                }
                 OpCode::GetUpvalue => {
                     let slot = self.read_byte() as usize;
                     self.push(self.get_upvalue(slot).borrow().deref().clone())
@@ -145,7 +155,8 @@ impl VM {
                             };
                             closure.push_upvalue(&captured);
                         }
-                        self.stack.push(Rc::new(RefCell::new(Value::Closure(Rc::new(closure)))));
+                        self.stack
+                            .push(Rc::new(RefCell::new(Value::Closure(Rc::new(closure)))));
                     } else {
                         panic!("Tried to read fucntion from constant table but got {constant:}");
                     };
@@ -271,8 +282,7 @@ impl VM {
     }
 
     fn call(&mut self, arg_count: usize) -> bool {
-        let arity = if let Value::Closure(callee) = self
-        .peek(arg_count).borrow().deref() {
+        let arity = if let Value::Closure(callee) = self.peek(arg_count).borrow().deref() {
             callee.arity()
         } else {
             panic!("tried to call a non-function");
@@ -339,10 +349,8 @@ impl VM {
     where
         F: Fn(Value, Value) -> Value,
     {
-        if (self.peek(0).borrow().is_string() && 
-        self.peek(1).borrow().is_string()) ||       
-         (self.peek(0).borrow().is_number()  &&
-          self.peek(1).borrow().is_number())
+        if (self.peek(0).borrow().is_string() && self.peek(1).borrow().is_string())
+            || (self.peek(0).borrow().is_number() && self.peek(1).borrow().is_number())
         {
             let b = self.pop().borrow().deref().clone();
             let a = self.pop().borrow().deref().clone();
@@ -357,8 +365,7 @@ impl VM {
     fn runtime_error<T: Into<String>>(&mut self, err_msg: T) -> Result<(), InterpretResult> {
         eprintln!("{}", err_msg.into());
         for frame in self.frames.iter().rev() {
-            if let Value::Closure(closure) = &self
-            .stack[frame.closure].borrow().deref() {
+            if let Value::Closure(closure) = &self.stack[frame.closure].borrow().deref() {
                 let instruction = *frame.ip.borrow() - 1_usize;
                 let line = closure.get_chunk().get_line(instruction);
                 eprintln!("[line {line} in {}", closure.stack_name());

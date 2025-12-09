@@ -1,12 +1,13 @@
 use std::any::Any;
+use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::fmt::{Debug, Display, Result};
 use std::ops::{Add, Div, Mul, Neg, Sub};
 use std::rc::Rc;
-use std::cell::RefCell;
 
 use crate::closure::*;
 use crate::function::*;
+use crate::class::*;
 
 pub trait NativeFunc {
     fn call(&self, arg_count: usize, args: &[Rc<RefCell<Value>>]) -> Value;
@@ -21,6 +22,7 @@ pub enum Value {
     Func(Rc<Function>),
     Native(Rc<dyn NativeFunc>),
     Closure(Rc<Closure>),
+    Class(Rc<Class>)
 }
 
 impl PartialEq for Value {
@@ -65,6 +67,7 @@ impl Clone for Value {
             Value::Func(f) => Value::Func(Rc::clone(f)),
             Value::Native(f) => Value::Native(Rc::clone(f)),
             Value::Closure(f) => Value::Closure(Rc::clone(f)),
+            Value::Class(c) => Value::Class(Rc::clone(c))
         }
     }
 }
@@ -79,6 +82,7 @@ impl Display for Value {
             Value::Func(func) => write!(f, "{}", func),
             Value::Native(_) => write!(f, "<native fn>"),
             Value::Closure(c) => write!(f, "{c}"),
+            Value::Class(klass) => write!(f, "{}", klass)
         }
     }
 }

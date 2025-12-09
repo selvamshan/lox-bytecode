@@ -50,6 +50,6 @@ impl Closure {
     }
 
     pub fn modify(&self, offset: usize, value: &Rc<RefCell<Value>>) {
-        self.upvalues.borrow_mut()[offset].set(value);// = Rc::new(Upvalue::new(value))
+        self.upvalues.borrow_mut()[offset].set(value); // = Rc::new(Upvalue::new(value))
     }
 }

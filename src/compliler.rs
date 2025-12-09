@@ -88,7 +88,7 @@ impl CompilerResult {
         FindResult::NotFound
     }
 
-    fn capture(&self, index:usize) {
+    fn capture(&self, index: usize) {
         let mut new_local = self.locals.borrow()[index].clone();
         new_local.is_captured = true;
         self.locals.borrow_mut()[index] = new_local;
@@ -128,7 +128,11 @@ impl CompilerResult {
             .unwrap()
             .resolve_local(name)?
         {
-            self.enclosing.borrow().as_ref().unwrap().capture(depth as usize);
+            self.enclosing
+                .borrow()
+                .as_ref()
+                .unwrap()
+                .capture(depth as usize);
             return Ok(Some(self.add_upvalue(depth, true)?));
         }
 
@@ -235,7 +239,7 @@ enum Precedence {
 struct Local {
     name: Token,
     depth: Option<usize>,
-    is_captured:bool
+    is_captured: bool,
 }
 
 impl From<usize> for Precedence {
@@ -366,7 +370,7 @@ impl Compiler {
         self.result.borrow().push(Local {
             name: Token::default(),
             depth: Some(0),
-            is_captured:false
+            is_captured: false,
         });
         self.scanner = Scanner::new(source);
         self.advance();
@@ -509,7 +513,7 @@ impl Compiler {
             if self.result.borrow().is_captured() {
                 self.emit_byte(OpCode::CloseUpvalue);
             } else {
-                self.emit_byte(OpCode::Pop);                
+                self.emit_byte(OpCode::Pop);
             }
             self.result.borrow().pop();
         }
@@ -671,7 +675,7 @@ impl Compiler {
         self.result.borrow().push(Local {
             name: name.clone(),
             depth: None,
-            is_captured:false
+            is_captured: false,
         });
     }
 
@@ -819,6 +823,18 @@ impl Compiler {
         }
     }
 
+    fn class_declaration(&mut self) {
+        self.consume(TokenType::Identifier, "Expect class name.");
+        let name_constant = self.identifier_constant(&self.parser.previous.clone());
+        self.declar_variable();
+
+        self.emit_bytes(OpCode::Class, name_constant);
+        self.define_variable(name_constant);
+
+        self.consume(TokenType::LeftBrace, "Expected '{{' before class body");
+        self.consume(TokenType::RightBrace, "Expected '}' before class body");
+    }
+
     fn fun_declaration(&mut self) {
         let global = self.parse_variable("Expect function name.");
         self.mark_initialized();
@@ -949,7 +965,9 @@ impl Compiler {
     }
 
     fn declaration(&mut self) {
-        if self.is_match(TokenType::Fun) {
+        if self.is_match(TokenType::Class) {
+            self.class_declaration();
+        } else if self.is_match(TokenType::Fun) {
             self.fun_declaration();
         } else if self.is_match(TokenType::Var) {
             self.var_declaration();
