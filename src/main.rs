@@ -1,26 +1,24 @@
 use std::env::args;
-use std::io::{Result, BufRead, Write, stdin, stdout};
-
+use std::io::{BufRead, Result, Write, stdin, stdout};
 
 mod vm;
 use vm::*;
 mod chunks;
+mod compliler;
+mod error;
+mod function;
+mod scanner;
 mod token;
 mod token_type;
 mod value;
-mod compliler;
-mod scanner;
-mod function;
-mod error;
 use error::*;
-mod native;
 mod closure;
+mod native;
 mod upvalue;
-
 
 fn main() {
     let args: Vec<String> = args().collect();
-     let mut vm = VM::new();  
+    let mut vm = VM::new();
 
     match args.len() {
         1 => repl(&mut vm),
@@ -29,8 +27,7 @@ fn main() {
             println!("Usage: lox-bytecode [path]");
             std::process::exit(64);
         }
-    }     
-   
+    }
 }
 
 fn repl(vm: &mut VM) {
@@ -49,14 +46,13 @@ fn repl(vm: &mut VM) {
         print!("> ");
         let _ = stdout().flush();
     }
-
 }
 
-fn run_file(vm: &mut VM, path: &str) -> Result<()>{
-    let  buf = std::fs::read_to_string(path)?;
+fn run_file(vm: &mut VM, path: &str) -> Result<()> {
+    let buf = std::fs::read_to_string(path)?;
     match vm.interpret(&buf) {
         Err(InterpretResult::CompileError) => std::process::exit(65),
         Err(InterpretResult::RuntimeError) => std::process::exit(70),
-        _ =>  std::process::exit(0),
-    }    
+        _ => std::process::exit(0),
+    }
 }

@@ -3,13 +3,12 @@ use std::rc::Rc;
 
 use crate::chunks::*;
 
-
 #[derive(Debug, Default)]
 pub struct Function {
-    name:String,
-    arity:usize,
-    pub chunk:Rc<Chunk>,
-    upvalue_count:usize,
+    name: String,
+    arity: usize,
+    pub chunk: Rc<Chunk>,
+    upvalue_count: usize,
 }
 
 impl PartialOrd for Function {
@@ -26,15 +25,14 @@ impl PartialEq for Function {
 
 impl Clone for Function {
     fn clone(&self) -> Self {
-        Function { 
+        Function {
             name: self.name.clone(),
             arity: self.arity,
-             chunk: self.chunk.clone(), 
-             upvalue_count: self.upvalue_count
+            chunk: self.chunk.clone(),
+            upvalue_count: self.upvalue_count,
         }
     }
 }
-
 
 impl Display for Function {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -42,18 +40,22 @@ impl Display for Function {
             write!(f, "<script>")
         } else {
             write!(f, "<fn {}>", self.name)
-        }      
+        }
     }
 }
 
-impl Function{
-    pub fn new<T:Into<String>>(
-        name:T, arity:usize, chunk: &Rc<Chunk>, upvalue_count:usize) -> Self {
+impl Function {
+    pub fn new<T: Into<String>>(
+        name: T,
+        arity: usize,
+        chunk: &Rc<Chunk>,
+        upvalue_count: usize,
+    ) -> Self {
         Self {
-            name:name.into(),
+            name: name.into(),
             arity,
             chunk: Rc::clone(chunk),
-            upvalue_count
+            upvalue_count,
         }
     }
 
@@ -63,19 +65,19 @@ impl Function{
 
     pub fn toplevel(chunk: &Rc<Chunk>) -> Self {
         Self {
-            name:"".to_string(),
-            arity:0,
+            name: "".to_string(),
+            arity: 0,
             chunk: Rc::clone(chunk),
-            upvalue_count:0
+            upvalue_count: 0,
         }
     }
-  
+
     pub fn arity(&self) -> usize {
         self.arity
     }
 
     pub fn stack_name(&self) -> &str {
-        if self.name.is_empty(){
+        if self.name.is_empty() {
             "script"
         } else {
             self.name.as_str()

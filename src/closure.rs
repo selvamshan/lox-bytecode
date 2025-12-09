@@ -1,17 +1,16 @@
-use std::rc::Rc;
 use std::cell::RefCell;
 use std::fmt::{Display, Result};
+use std::rc::Rc;
 
-use crate::function::*;
 use crate::chunks::*;
-use crate::value::*;
+use crate::function::*;
 use crate::upvalue::*;
-
+use crate::value::*;
 
 #[derive(Debug)]
-pub struct Closure{
+pub struct Closure {
     function: Rc<Function>,
-    upvalues: RefCell<Vec<Rc<Upvalue>>>
+    upvalues: RefCell<Vec<Rc<Upvalue>>>,
 }
 
 impl Display for Closure {
@@ -21,8 +20,8 @@ impl Display for Closure {
 }
 
 impl Closure {
-    pub fn new(function:Rc<Function>) -> Self {
-        Self{
+    pub fn new(function: Rc<Function>) -> Self {
+        Self {
             function: Rc::clone(&function),
             upvalues: RefCell::new(Vec::new()),
         }
@@ -32,7 +31,6 @@ impl Closure {
         self.function.arity()
     }
 
-    
     pub fn get_chunk(&self) -> Rc<Chunk> {
         self.function.get_chunk()
     }
@@ -41,16 +39,17 @@ impl Closure {
         self.function.stack_name()
     }
 
-    pub fn push_upvalue(&self, value: &Rc<Value>) {
-        self.upvalues.borrow_mut().push(Rc::new(Upvalue::new(value)));
+    pub fn push_upvalue(&self, value: &Rc<RefCell<Value>>) {
+        self.upvalues
+            .borrow_mut()
+            .push(Rc::new(Upvalue::new(value)));
     }
 
-    pub fn get_upvalue(&self, offset:usize) -> Rc<Value> {
-       self.upvalues.borrow()[offset].value()
+    pub fn get_upvalue(&self, offset: usize) -> Rc<RefCell<Value>> {
+        self.upvalues.borrow()[offset].value()
     }
 
-    pub fn modify(&self, offset:usize, value:&Rc<Value>) {
-        self.upvalues.borrow_mut()[offset] = Rc::new(Upvalue::new(value))
+    pub fn modify(&self, offset: usize, value: &Rc<RefCell<Value>>) {
+        self.upvalues.borrow_mut()[offset].set(value);// = Rc::new(Upvalue::new(value))
     }
-
 }
