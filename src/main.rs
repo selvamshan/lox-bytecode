@@ -16,6 +16,7 @@ mod closure;
 mod native;
 mod upvalue;
 mod class;
+mod instance;
 
 fn main() {
     let args: Vec<String> = args().collect();

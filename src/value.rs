@@ -8,6 +8,7 @@ use std::rc::Rc;
 use crate::closure::*;
 use crate::function::*;
 use crate::class::*;
+use crate::instance::*;
 
 pub trait NativeFunc {
     fn call(&self, arg_count: usize, args: &[Rc<RefCell<Value>>]) -> Value;
@@ -22,7 +23,8 @@ pub enum Value {
     Func(Rc<Function>),
     Native(Rc<dyn NativeFunc>),
     Closure(Rc<Closure>),
-    Class(Rc<Class>)
+    Class(Rc<Class>),
+    Instance(Rc<Instance>),
 }
 
 impl PartialEq for Value {
@@ -33,6 +35,8 @@ impl PartialEq for Value {
             (Value::Str(a), Value::Str(b)) => a.cmp(b) == Ordering::Equal,
             (Value::Nil, Value::Nil) => true,
             (Value::Func(a), Value::Func(b)) => Rc::ptr_eq(a, b),
+            (Value::Class(a), Value::Class(b)) => Rc::ptr_eq(a, b),
+            (Value::Instance(a), Value::Instance(b)) => Rc::ptr_eq(a, b),
             (Value::Native(a), Value::Native(b)) => a.type_id() == b.type_id(),
             (Value::Closure(a), Value::Closure(b)) => Rc::ptr_eq(a, b),
             _ => false,
@@ -45,7 +49,7 @@ impl PartialOrd for Value {
         match (self, other) {
             (Value::Boolean(a), Value::Boolean(b)) => a.partial_cmp(b),
             (Value::Number(a), Value::Number(b)) => a.partial_cmp(b),
-            (Value::Str(a), Value::Str(b)) => a.partial_cmp(b),
+            (Value::Str(a), Value::Str(b)) => a.partial_cmp(b),            
             _ => None,
         }
     }
@@ -67,7 +71,8 @@ impl Clone for Value {
             Value::Func(f) => Value::Func(Rc::clone(f)),
             Value::Native(f) => Value::Native(Rc::clone(f)),
             Value::Closure(f) => Value::Closure(Rc::clone(f)),
-            Value::Class(c) => Value::Class(Rc::clone(c))
+            Value::Class(c) => Value::Class(Rc::clone(c)),
+            Value::Instance(i) => Value::Instance(Rc::clone(i))
         }
     }
 }
@@ -82,7 +87,8 @@ impl Display for Value {
             Value::Func(func) => write!(f, "{}", func),
             Value::Native(_) => write!(f, "<native fn>"),
             Value::Closure(c) => write!(f, "{c}"),
-            Value::Class(klass) => write!(f, "{}", klass)
+            Value::Class(klass) => write!(f, "{}", klass),
+            Value::Instance(i) => write!(f, "{i}")
         }
     }
 }

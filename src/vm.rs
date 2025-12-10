@@ -11,6 +11,7 @@ use crate::error::*;
 use crate::native::*;
 use crate::value::*;
 use crate::class::*;
+use crate::instance::*;
 
 pub struct VM {
     stack: Vec<Rc<RefCell<Value>>>,
@@ -308,6 +309,13 @@ impl VM {
     fn call_value(&mut self, arg_count: usize) -> bool {
         let callee = self.peek(arg_count).borrow().deref().clone();
         let success = match callee {
+            Value::Class(klass) => {
+                let stack_top = self.stack.len();
+                self.stack[stack_top - arg_count -1] = Rc::new(
+                    RefCell::new(Value::Instance(Rc::new(Instance::new(klass)
+                ))));
+                true
+            }
             Value::Closure(_) => {
                 return self.call(arg_count);
             }
@@ -316,7 +324,7 @@ impl VM {
                 let result = f.call(arg_count, &self.stack[stack_top - arg_count..stack_top]);
                 self.stack.truncate(stack_top - arg_count + 1);
                 self.push(result);
-                return true;
+                true
             }
             _ => false,
         };
