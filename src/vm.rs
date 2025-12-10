@@ -121,6 +121,49 @@ impl VM {
                 OpCode::Print => {
                     println!("{}", self.pop().borrow());
                 }
+                OpCode::SetProperty => {
+                    let  instance = if let Value::Instance(i) = self
+                    .peek(1).borrow().clone(){    
+                        i
+                    }  else {
+                        return self.runtime_error("Only Instaces have fields.")
+                    };  
+                                           
+                    let constant  = self.read_constant().clone();                         
+                   let field_name = if let Value::Str(s) = constant {
+                        s
+                    } else {
+                        panic!("Unable to get class field from tables");
+                    };
+
+                    let value = self.pop();
+                    instance.set_field(&field_name, &value.borrow().clone());  
+
+                    self.pop();                  
+                    self.push(value.borrow().clone());
+                }
+                OpCode::GetProperty => {                    
+                    let instance = if let Value::Instance(i) = self
+                    .peek(0).borrow().clone(){    
+                        i
+                    }  else {
+                        return self.runtime_error("Only Instaces have properties.")
+                    };  
+                    let constant  = self.read_constant().clone();                         
+                    let field_name = if let Value::Str(s) = constant {
+                            s
+                    } else {
+                        panic!("Unable to get class name from table");
+                    };
+                    
+                    if let Some(value) = instance.get_field(&field_name) {
+                        self.pop();
+                        self.push(value.clone());
+                    } else {
+                        return self.runtime_error(format!("Undefined property '{field_name}'"));
+                    }                      
+                               
+                }                
                 OpCode::Class => {
                     let constant = self.read_constant().clone();
                     let class_string = if let Value::Str(s) = constant {
