@@ -7,7 +7,7 @@ use crate::function::*;
 use crate::upvalue::*;
 use crate::value::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Closure {
     function: Rc<Function>,
     upvalues: RefCell<Vec<Rc<Upvalue>>>,

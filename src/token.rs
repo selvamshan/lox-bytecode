@@ -1,5 +1,6 @@
 use crate::token_type::*;
 
+#[derive(Debug, PartialEq, Eq, Hash, )]
 pub struct Token {
     pub ttype: TokenType,
     pub lexeme: String,

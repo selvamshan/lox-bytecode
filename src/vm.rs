@@ -12,6 +12,7 @@ use crate::native::*;
 use crate::value::*;
 use crate::class::*;
 use crate::instance::*;
+use crate::bound_method::*;
 
 pub struct VM {
     stack: Vec<Rc<RefCell<Value>>>,
@@ -55,10 +56,9 @@ impl VM {
         let mut compiler = Compiler::new();
         let function = compiler.compile(source)?;
 
-        self.stack.push(Rc::new(RefCell::new(Value::Closure(Rc::new(
-            Closure::new(Rc::new(function)),
-        )))));
-        self.call(0);
+        let closure = Rc::new(Closure::new(Rc::new(function)));
+        self.stack.push(Rc::new(RefCell::new(Value::Closure(Rc::clone(&closure)))));
+        self.call(closure, 0);
         let result = self.run();
         self.stack.pop();
         result
@@ -94,12 +94,26 @@ impl VM {
         Rc::clone(&self.stack[offset])
     }
 
+    fn define_method(&mut self, name:&String) {
+        let method  = self.peek(0).borrow().clone();
+
+        let  klass = if let Value::Class(c) = self. 
+        peek(1).borrow().clone() {
+            c
+        } else {
+            panic!("unable to get method's class");
+        };
+        klass.add_method(name, &method);
+        self.pop();
+
+    }
+
     fn chunk(&self) -> Rc<Chunk> {
         let position = self.current_frame().closure;
-        if let Value::Closure(c) = &self.stack[position].borrow().deref() {
-            c.get_chunk()
-        } else {
-            panic!("no chnuk")
+        match self.stack[position].borrow().deref() {
+        Value::Closure(c) => c.get_chunk(),
+        Value::Bound(b) => b.get_closure().get_chunk(),
+        _ =>  panic!("no chnuk")
         }
     }
 
@@ -120,6 +134,15 @@ impl VM {
             match instruction {
                 OpCode::Print => {
                     println!("{}", self.pop().borrow());
+                }
+                OpCode::Method => {
+                    let constant = self.read_constant().clone();
+                    let method_name = if let Value::Str(s) = constant {
+                        s
+                    } else {
+                        panic!("Unable to get class meethods");
+                    };
+                    self.define_method(&method_name)
                 }
                 OpCode::SetProperty => {
                     let  instance = if let Value::Instance(i) = self
@@ -159,7 +182,8 @@ impl VM {
                     if let Some(value) = instance.get_field(&field_name) {
                         self.pop();
                         self.push(value.clone());
-                    } else {
+                    }
+                    if !self.bind_method(instance.get_class(), &field_name) {                    
                         return self.runtime_error(format!("Undefined property '{field_name}'"));
                     }                      
                                
@@ -325,12 +349,14 @@ impl VM {
         &self.stack[self.stack.len() - distance - 1]
     }
 
-    fn call(&mut self, arg_count: usize) -> bool {
-        let arity = if let Value::Closure(callee) = self.peek(arg_count).borrow().deref() {
-            callee.arity()
-        } else {
-            panic!("tried to call a non-function");
-        };
+    fn call(&mut self, closure: Rc<Closure>, arg_count: usize) -> bool {
+        let arity = closure.arity();
+        //let distance = self.peek(arg_count).borrow().clone();
+        // let arity = if let Value::Closure(callee) = self.peek(arg_count).borrow().deref() {
+        //     callee.arity()
+        // }  else {
+        //     panic!("tried to call a non-function");
+        // };
         if arity != arg_count {
             let _ = self.runtime_error(format!("Expected {arity} arguments but got {arg_count}"));
             return false;
@@ -359,8 +385,8 @@ impl VM {
                 ))));
                 true
             }
-            Value::Closure(_) => {
-                return self.call(arg_count);
+            Value::Closure(closure) => {
+                return self.call(closure, arg_count);
             }
             Value::Native(f) => {
                 let stack_top = self.stack.len();
@@ -369,6 +395,10 @@ impl VM {
                 self.push(result);
                 true
             }
+            Value::Bound(method) => {
+                 let closure = method.get_closure();  
+                 return self.call(closure, arg_count);
+            }
             _ => false,
         };
 
@@ -376,6 +406,23 @@ impl VM {
             let _ = self.runtime_error("Can only call functions and classes.");
         }
         success
+    }
+
+    fn bind_method(&mut self, klass:Rc<Class>, name: &String) -> bool {
+        if let Some(method) = klass.get_mehtod(name) {
+            let value = self.peek(0).borrow().clone();
+            let bound = BoundMethod::new(
+                &value,
+                &method
+            );
+            self.pop();
+            self.push(Value::Bound(Rc::new(bound)));            
+            true
+        } else {
+             let _ = self.runtime_error(format!("Undefied property '{}'", name));
+            false
+        }
+        
     }
 
     fn read_byte(&mut self) -> u8 {

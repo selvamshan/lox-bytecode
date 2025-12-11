@@ -840,16 +840,29 @@ impl Compiler {
         }
     }
 
+    fn method(&mut self) {
+        self.consume(TokenType::Identifier, "Expect class name.");
+         let constant = self.identifier_constant(&self.parser.previous.clone());
+         self.function();
+         self.emit_bytes(OpCode::Method, constant);
+    }
+
     fn class_declaration(&mut self) {
         self.consume(TokenType::Identifier, "Expect class name.");
-        let name_constant = self.identifier_constant(&self.parser.previous.clone());
+        let class_name =  self.parser.previous.clone();
+        let name_constant = self.identifier_constant(&class_name);
         self.declar_variable();
 
         self.emit_bytes(OpCode::Class, name_constant);
         self.define_variable(name_constant);
 
+        self.named_variable(&class_name, false);
         self.consume(TokenType::LeftBrace, "Expected '{{' before class body");
+        while !self.check(TokenType::RightBrace) && !self.check(TokenType::Eof){
+            self.method();
+        }
         self.consume(TokenType::RightBrace, "Expected '}' before class body");
+        self.emit_byte(OpCode::Pop);
     }
 
     fn fun_declaration(&mut self) {

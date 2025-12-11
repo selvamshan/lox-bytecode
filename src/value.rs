@@ -9,6 +9,7 @@ use crate::closure::*;
 use crate::function::*;
 use crate::class::*;
 use crate::instance::*;
+use crate::bound_method::*;
 
 pub trait NativeFunc {
     fn call(&self, arg_count: usize, args: &[Rc<RefCell<Value>>]) -> Value;
@@ -25,6 +26,7 @@ pub enum Value {
     Closure(Rc<Closure>),
     Class(Rc<Class>),
     Instance(Rc<Instance>),
+    Bound(Rc<BoundMethod>)
 }
 
 impl PartialEq for Value {
@@ -39,6 +41,7 @@ impl PartialEq for Value {
             (Value::Instance(a), Value::Instance(b)) => Rc::ptr_eq(a, b),
             (Value::Native(a), Value::Native(b)) => a.type_id() == b.type_id(),
             (Value::Closure(a), Value::Closure(b)) => Rc::ptr_eq(a, b),
+            (Value::Bound(a), Value::Bound(b)) => Rc::ptr_eq(a, b),
             _ => false,
         }
     }
@@ -72,7 +75,8 @@ impl Clone for Value {
             Value::Native(f) => Value::Native(Rc::clone(f)),
             Value::Closure(f) => Value::Closure(Rc::clone(f)),
             Value::Class(c) => Value::Class(Rc::clone(c)),
-            Value::Instance(i) => Value::Instance(Rc::clone(i))
+            Value::Instance(i) => Value::Instance(Rc::clone(i)),
+            Value::Bound(b) => Value::Bound(Rc::clone(b))
         }
     }
 }
@@ -88,7 +92,8 @@ impl Display for Value {
             Value::Native(_) => write!(f, "<native fn>"),
             Value::Closure(c) => write!(f, "{c}"),
             Value::Class(klass) => write!(f, "{}", klass),
-            Value::Instance(i) => write!(f, "{i}")
+            Value::Instance(i) => write!(f, "{i}"),
+            Value::Bound(b) => write!(f, "{b}")
         }
     }
 }

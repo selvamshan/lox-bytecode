@@ -34,7 +34,8 @@ pub enum OpCode {
     CloseUpvalue,
     Class,
     GetProperty,
-    SetProperty
+    SetProperty,
+    Method,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -172,6 +173,7 @@ impl Chunk {
             OpCode::Class => self.constant_instruction("OP_CLASS", offset),
             OpCode::GetProperty => self.constant_instruction("OP_GET_PROPERTY", offset),
             OpCode::SetProperty => self.constant_instruction("OP_SET_PROPERTY", offset),
+            OpCode::Method => self.constant_instruction("OP_METHOD", offset),
         }
     }
 
@@ -255,6 +257,7 @@ impl From<u8> for OpCode {
             29 => OpCode::Class,
             30 => OpCode::GetProperty,
             31 => OpCode::SetProperty,
+            32 => OpCode::Method,
             _ => unimplemented!("Invalid opcode"),
         }
     }

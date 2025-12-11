@@ -17,6 +17,7 @@ mod native;
 mod upvalue;
 mod class;
 mod instance;
+mod bound_method;
 
 fn main() {
     let args: Vec<String> = args().collect();

@@ -29,6 +29,10 @@ impl Instance {
     pub fn set_field<T:Into<String>>(&self, field_name:T, value:&Value) {
          self.fields.borrow_mut().insert(field_name.into(), value.clone());
     }
+
+    pub fn get_class(&self) -> Rc<Class> {
+        Rc::clone(&self.klass)
+    }
 }
 
 impl Display for Instance {
