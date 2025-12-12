@@ -21,12 +21,24 @@ enum ChnukType {
     #[default]
     Script,
     Function,
+    Method,
 }
 
 #[derive(Default, PartialEq)]
 struct UpvlaueData {
     is_local: bool,
     index: u8,
+}
+
+#[derive(Default)]
+struct ClassCompiler {
+    enclosing: RefCell<Option<Rc<ClassCompiler>>>
+}
+
+impl ClassCompiler {
+    fn new() -> Self {
+        Self { enclosing: RefCell::new(None) }
+    }
 }
 
 #[derive(Default)]
@@ -39,23 +51,34 @@ struct CompilerResult {
     ctype: ChnukType,
     enclosing: RefCell<Option<Rc<CompilerResult>>>,
     upvalues: RefCell<Vec<UpvlaueData>>,
+    current_class: RefCell<Option<Rc<ClassCompiler>>>
 }
 
 enum FindResult {
     Uninitialized,
     NotFound,
     Depth(u8),
-    ToManyVairables,
+    ToManyvariables,
 }
 
 impl CompilerResult {
     fn new<T: Into<String>>(name: T, ctype: ChnukType) -> Self {
         let locals = RefCell::new(Vec::new());
-        locals.borrow_mut().push(Local {
-            name: Token::default(),
-            depth: Some(0),
-            is_captured: false,
-        });
+        locals.borrow_mut().push( 
+            if ctype != ChnukType::Function {
+                  Local { 
+                    name: Token { ttype: TokenType::This, lexeme: String::from("this"), line: 0 }, 
+                    depth: Some(0), 
+                    is_captured: false
+               }
+            } else {              
+               Local {
+                    name: Token::default(),
+                    depth: Some(0),
+                    is_captured: false,
+                }
+          }
+        );
         Self {
             locals,
             current_function: RefCell::new(name.into()),
@@ -97,7 +120,7 @@ impl CompilerResult {
     fn resolve_local(&self, name: &Token) -> Result<Option<u8>, FindResult> {
         let find_result = self.find_variable(&name.lexeme);
         match find_result {
-            FindResult::Uninitialized | FindResult::ToManyVairables => Err(find_result),
+            FindResult::Uninitialized | FindResult::ToManyvariables => Err(find_result),
             FindResult::NotFound => Ok(None),
             FindResult::Depth(d) => Ok(Some(d)),
         }
@@ -110,7 +133,7 @@ impl CompilerResult {
         }
         let upvalue_count = self.upvalues.borrow().len() as u8;
         if upvalue_count == 255 {
-            return Err(FindResult::ToManyVairables);
+            return Err(FindResult::ToManyvariables);
         }
         self.upvalues.borrow_mut().push(upvlaue);
         Ok(upvalue_count)
@@ -346,7 +369,7 @@ impl Compiler {
             precedence: Precedence::Comparison,
         };
         rules[TokenType::String as usize].prefix = Some(|c, b| c.string(b));
-        rules[TokenType::Identifier as usize].prefix = Some(|c, b| c.vairable(b));
+        rules[TokenType::Identifier as usize].prefix = Some(|c, b| c.variable(b));
         rules[TokenType::And as usize] = ParseRule {
             prefix: None,
             infix: Some(|c, b| c.and(b)),
@@ -362,6 +385,7 @@ impl Compiler {
             infix: Some(Compiler::dot),
             precedence: Precedence::Call,
         };
+        rules[TokenType::This as usize].prefix = Some(Compiler::this);
 
         Self {
             rules,
@@ -614,7 +638,7 @@ impl Compiler {
 
     fn resolve_upvalue(&self, name: &Token) -> Option<u8> {
         match self.result.borrow().resolve_upvalue(name) {
-            Err(FindResult::ToManyVairables) => {
+            Err(FindResult::ToManyvariables) => {
                 self.error("TODO - error message");
                 None
             }
@@ -644,9 +668,14 @@ impl Compiler {
         }
     }
 
-    fn vairable(&mut self, can_assign: bool) {
+    fn variable(&mut self, can_assign: bool) {
         let name = &self.parser.previous.clone();
         self.named_variable(name, can_assign);
+    }
+
+    fn this(&mut self, _can_assign: bool) {
+        println!("this is called");
+        self.variable(false);
     }
 
     fn unary(&mut self, _can_assign: bool) {
@@ -789,10 +818,10 @@ impl Compiler {
         self.consume(TokenType::RightBrace, "Excpect '}' after block");
     }
 
-    fn function(&mut self) {
+    fn function(&mut self, ctype:ChnukType) {
         let prev_complier = self.result.replace(Rc::new(CompilerResult::new(
             self.parser.previous.lexeme.clone(),
-            ChnukType::Function,
+            ctype
         )));
 
         self.result.borrow().enclosing.replace(Some(prev_complier));
@@ -843,7 +872,7 @@ impl Compiler {
     fn method(&mut self) {
         self.consume(TokenType::Identifier, "Expect class name.");
          let constant = self.identifier_constant(&self.parser.previous.clone());
-         self.function();
+         self.function(ChnukType::Method);
          self.emit_bytes(OpCode::Method, constant);
     }
 
@@ -855,6 +884,7 @@ impl Compiler {
 
         self.emit_bytes(OpCode::Class, name_constant);
         self.define_variable(name_constant);
+        
 
         self.named_variable(&class_name, false);
         self.consume(TokenType::LeftBrace, "Expected '{{' before class body");
@@ -863,12 +893,13 @@ impl Compiler {
         }
         self.consume(TokenType::RightBrace, "Expected '}' before class body");
         self.emit_byte(OpCode::Pop);
+        
     }
 
     fn fun_declaration(&mut self) {
         let global = self.parse_variable("Expect function name.");
         self.mark_initialized();
-        self.function();
+        self.function(ChnukType::Function);
         self.define_variable(global);
     }
 

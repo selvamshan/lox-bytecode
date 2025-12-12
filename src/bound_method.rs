@@ -21,6 +21,10 @@ impl BoundMethod {
     pub fn get_closure(&self) -> Rc<Closure> {
         Rc::clone(&self.method)
     }
+
+    pub fn get_recevier(&self) -> Value {
+        self.receiver.clone()
+    }
     
 }
 
