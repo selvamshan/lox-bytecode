@@ -95,7 +95,16 @@ impl VM {
         } else {
             panic!("unable to get method's class");
         };
-        klass.add_method(name, &method);
+        if name == "init" {
+            if let Value::Closure(closure) = method {
+                klass.set_init_method(closure);
+            } else {
+                panic!("method should have be closure");
+            }
+        } else {
+            klass.add_method(name, &method);
+        }
+        
         self.pop();
 
     }
@@ -379,7 +388,7 @@ impl VM {
         let success = match callee {
             Value::Class(klass) => {
                 let stack_top = self.stack.len();
-                let init = klass.get_mehtod("init");
+                let init = klass.get_init_method();
                 self.stack[stack_top - arg_count -1] = Rc::new(
                     RefCell::new(Value::Instance(Rc::new(Instance::new(klass)
                 ))));

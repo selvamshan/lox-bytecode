@@ -1,6 +1,7 @@
 use std::fmt::Display;
 use std::fmt::Result;
 use std::cell::RefCell;
+use std::ops::Deref;
 use std::rc::Rc;
 use std::collections::HashMap;
 
@@ -12,7 +13,8 @@ use crate::closure::*;
 #[derive(Debug)]
 pub struct Class{
     name: String,   
-    methods: RefCell<HashMap<String, Rc<Closure>>>
+    methods: RefCell<HashMap<String, Rc<Closure>>>,
+    init: RefCell<Option<Rc<Closure>>>
 }
 
 
@@ -26,8 +28,17 @@ impl Class {
     pub fn new(name:String) -> Self {
         Self {
             name,
-            methods: RefCell::new(HashMap::new())
+            methods: RefCell::new(HashMap::new()),
+            init: RefCell::new(None)
         }
+    }
+
+    pub fn set_init_method(&self, closure:Rc<Closure>) {      
+        self.init.replace(Some(closure));
+    }
+
+    pub fn get_init_method(&self) -> Option<Rc<Closure>> {
+        self.init.borrow().deref().clone()
     }
 
     pub fn add_method<T:Into<String>>(&self, name:T, value:&Value) {
