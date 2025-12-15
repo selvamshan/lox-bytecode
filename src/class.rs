@@ -36,7 +36,7 @@ impl Class {
         }
     }
 
-    pub fn get_mehtod(&self, name:&String)-> Option<Rc<Closure>> {
+    pub fn get_mehtod(&self, name:&str)-> Option<Rc<Closure>> {
         self.methods.borrow().get(name).cloned()
     }
 }

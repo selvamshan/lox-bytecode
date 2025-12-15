@@ -366,10 +366,19 @@ impl VM {
         let success = match callee {
             Value::Class(klass) => {
                 let stack_top = self.stack.len();
+                let init = klass.get_mehtod("init");
                 self.stack[stack_top - arg_count -1] = Rc::new(
                     RefCell::new(Value::Instance(Rc::new(Instance::new(klass)
                 ))));
-                true
+                if let Some(initializer) = init {
+                    self.call(initializer, arg_count)
+                } else if arg_count != 0 {
+                    let _ = self.runtime_error(format!("Expect 0 arguments but got {arg_count}"));
+                    false
+                } else {
+                     true
+                }
+                
             }
             Value::Closure(closure) => {
                 return self.call(closure, arg_count);
@@ -454,10 +463,10 @@ impl VM {
     fn runtime_error<T: Into<String>>(&mut self, err_msg: T) -> Result<(), InterpretResult> {
         eprintln!("{}", err_msg.into());
         for frame in self.frames.iter().rev() {                       
-                let instruction = *frame.ip.borrow() - 1_usize;
-                let closure = &frame.closure;
-                let line = closure.get_chunk().get_line(instruction);
-                eprintln!("[line {line} in {}", closure.stack_name());           
+            let instruction = *frame.ip.borrow() - 1_usize;
+            let closure = &frame.closure;
+            let line = closure.get_chunk().get_line(instruction);
+            eprintln!("[line {line} in {}", closure.stack_name());           
         }
         self.reset_stack();
         Err(InterpretResult::RuntimeError)

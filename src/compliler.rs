@@ -18,11 +18,12 @@ pub struct Compiler {
 }
 
 #[derive(PartialEq, Default)]
-enum ChnukType {
+enum ChunkType {
     #[default]
     Script,
     Function,
     Method,
+    Initializer,
 }
 
 #[derive(Default, PartialEq)]
@@ -49,7 +50,7 @@ struct CompilerResult {
     scope_depth: RefCell<usize>,
     arity: RefCell<usize>,
     current_function: RefCell<String>,
-    ctype: ChnukType,
+    ctype: ChunkType,
     enclosing: RefCell<Option<Rc<CompilerResult>>>,
     upvalues: RefCell<Vec<UpvlaueData>>,   
 }
@@ -62,10 +63,10 @@ enum FindResult {
 }
 
 impl CompilerResult {
-    fn new<T: Into<String>>(name: T, ctype: ChnukType) -> Self {
+    fn new<T: Into<String>>(name: T, ctype: ChunkType) -> Self {
         let locals = RefCell::new(Vec::new());
         locals.borrow_mut().push( 
-            if ctype != ChnukType::Function {
+            if ctype != ChunkType::Function {
                   Local { 
                     name: Token { ttype: TokenType::This, lexeme: String::from("this"), line: 0 }, 
                     depth: Some(0), 
@@ -485,7 +486,11 @@ impl Compiler {
     }
 
     fn emit_return(&mut self) {
-        self.emit_byte(OpCode::Nil);
+        if self.result.borrow().ctype == ChunkType::Initializer {
+            self.emit_bytes(OpCode::GetLocal, 0);
+        } else {
+             self.emit_byte(OpCode::Nil);
+        }       
         self.emit_byte(OpCode::Return);
     }
 
@@ -822,7 +827,7 @@ impl Compiler {
         self.consume(TokenType::RightBrace, "Excpect '}' after block");
     }
 
-    fn function(&mut self, ctype:ChnukType) {
+    fn function(&mut self, ctype:ChunkType) {
         let prev_complier = self.result.replace(Rc::new(CompilerResult::new(
             self.parser.previous.lexeme.clone(),
             ctype
@@ -875,9 +880,15 @@ impl Compiler {
 
     fn method(&mut self) {
         self.consume(TokenType::Identifier, "Expect class name.");
-         let constant = self.identifier_constant(&self.parser.previous.clone());
-         self.function(ChnukType::Method);
-         self.emit_bytes(OpCode::Method, constant);
+        let parse_token = self.parser.previous.clone();
+        let constant = self.identifier_constant(&parse_token);
+
+        self.function(if parse_token.lexeme == "init" {
+        ChunkType::Initializer
+        } else {
+            ChunkType::Method
+        });
+        self.emit_bytes(OpCode::Method, constant);
     }
 
     fn class_declaration(&mut self) {
@@ -925,7 +936,7 @@ impl Compiler {
     fn fun_declaration(&mut self) {
         let global = self.parse_variable("Expect function name.");
         self.mark_initialized();
-        self.function(ChnukType::Function);
+        self.function(ChunkType::Function);
         self.define_variable(global);
     }
 
@@ -1000,12 +1011,15 @@ impl Compiler {
     }
 
     fn return_statement(&mut self) {
-        if self.result.borrow().ctype == ChnukType::Script {
+        if self.result.borrow().ctype == ChunkType::Script {
             self.error("Can't return from top-level code.");
         }
         if self.is_match(TokenType::SemiColon) {
             self.emit_return();
         } else {
+            if self.result.borrow().ctype == ChunkType::Initializer {
+                self.error("Can't return a value form a initializer.");
+            }
             self.expression();
             self.consume(TokenType::SemiColon, "Expect ';' after return value");
             self.emit_byte(OpCode::Return);
