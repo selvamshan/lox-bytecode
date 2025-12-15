@@ -14,6 +14,7 @@ pub struct Compiler {
     parser: Parser,
     scanner: Scanner,
     result: RefCell<Rc<CompilerResult>>,
+    current_class: RefCell<Option<Rc<ClassCompiler>>>
 }
 
 #[derive(PartialEq, Default)]
@@ -50,8 +51,7 @@ struct CompilerResult {
     current_function: RefCell<String>,
     ctype: ChnukType,
     enclosing: RefCell<Option<Rc<CompilerResult>>>,
-    upvalues: RefCell<Vec<UpvlaueData>>,
-    current_class: RefCell<Option<Rc<ClassCompiler>>>
+    upvalues: RefCell<Vec<UpvlaueData>>,   
 }
 
 enum FindResult {
@@ -392,6 +392,7 @@ impl Compiler {
             parser: Parser::default(),
             scanner: Scanner::new(""),
             result: RefCell::new(Rc::new(CompilerResult::default())),
+            current_class: RefCell::new(None)
         }
     }
 
@@ -674,7 +675,10 @@ impl Compiler {
     }
 
     fn this(&mut self, _can_assign: bool) {
-        println!("this is called");
+        if self.current_class.borrow().is_none() {
+            self.error("Can't use 'this' outside of a class");
+        }
+        
         self.variable(false);
     }
 
@@ -885,6 +889,19 @@ impl Compiler {
         self.emit_bytes(OpCode::Class, name_constant);
         self.define_variable(name_constant);
         
+        let prev = self        
+        .current_class
+        .replace(Some(Rc::new(ClassCompiler::new())));
+
+        self
+        .current_class
+        .borrow()
+        .as_deref()
+        .unwrap()
+        .enclosing        
+        .replace(prev);
+
+        
 
         self.named_variable(&class_name, false);
         self.consume(TokenType::LeftBrace, "Expected '{{' before class body");
@@ -893,6 +910,15 @@ impl Compiler {
         }
         self.consume(TokenType::RightBrace, "Expected '}' before class body");
         self.emit_byte(OpCode::Pop);
+
+        let prev =  self
+        .current_class
+        .borrow()
+        .as_deref()
+        .unwrap()
+        .enclosing        
+        .replace(None);
+        self.current_class.replace(prev);
         
     }
 
