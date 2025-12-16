@@ -712,8 +712,15 @@ impl Compiler {
         let name = self.identifier_constant(&self.parser.previous.clone());
         //&Token::new("super")
         self.named_variable(&Token::new("this"), false);
-        self.named_variable(&Token::new("super"), false);
-        self.emit_bytes(OpCode::GetSuper, name);
+        if self.is_match(TokenType::LeftParen) {
+            let arg_count = self.argument_list();
+            self.named_variable(&Token::new("super"), false);
+            self.emit_bytes(OpCode::SuperInoke, name);
+            self.emit_byte(arg_count);
+        } else {
+            self.named_variable(&Token::new("super"), false);
+            self.emit_bytes(OpCode::GetSuper, name);
+        }
         
     }
 

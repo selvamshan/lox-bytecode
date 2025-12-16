@@ -137,6 +137,21 @@ impl VM {
                 OpCode::Print => {
                     println!("{}", self.pop().borrow());
                 }
+                OpCode::SuperInoke => {
+                    let constant = self.read_constant().clone();
+                    let arg_count = self.read_byte() as usize;
+                    let method_name = if let Value::Str(s) = constant {
+                        s
+                    } else {
+                        panic!("No superclass method");
+                    };
+                    let superclass_value = self.pop().borrow().clone();
+                    if let Value::Class(superclass) = superclass_value {
+                        if !self.invoke_from_class(superclass, &method_name, arg_count) {
+                            return Err(InterpretResult::RuntimeError)
+                        }
+                    }
+                }
                 OpCode::GetSuper => {
                     let constant = self.read_constant().clone();
                     let method_name = if let Value::Str(s) = constant {
