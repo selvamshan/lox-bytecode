@@ -137,6 +137,24 @@ impl VM {
                 OpCode::Print => {
                     println!("{}", self.pop().borrow());
                 }
+                OpCode::Inherit => {
+                    let value = self.peek(1).borrow().clone();
+                    let superclass = if let Value::Class(c) =  value {
+                        c
+                    } else {
+                       return self.runtime_error("Superclass must be a class.");                 
+                    };
+                  
+                    let subclass = if let Value::Class(c) =  self.peek(0).borrow().clone() {
+                        c
+                    } else {
+                        panic!("No sub class found on stack")
+                    };
+
+                    subclass.copy_method(&superclass);
+
+                    self.pop();
+                }
                 OpCode::Invoke => {
                     let constant = self.read_constant().clone();
                     let method_name = if let Value::Str(s) = constant {

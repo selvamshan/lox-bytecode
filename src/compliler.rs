@@ -917,10 +917,19 @@ impl Compiler {
         .enclosing        
         .replace(prev);
 
-        
+        if self.is_match(TokenType::Less) {
+            self.consume(TokenType::Identifier, "Expect supreclass name.");
+            self.variable(false);
+            let prev = self.parser.previous.clone();
+            if class_name.lexeme == prev.lexeme {
+                self.error("A class can't inherit from itself");
+            }
+            self.named_variable(&class_name, false);
+            self.emit_byte(OpCode::Inherit);
+        }
 
         self.named_variable(&class_name, false);
-        self.consume(TokenType::LeftBrace, "Expected '{{' before class body");
+        self.consume(TokenType::LeftBrace, "Expected '{' before class body");
         while !self.check(TokenType::RightBrace) && !self.check(TokenType::Eof){
             self.method();
         }

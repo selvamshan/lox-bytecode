@@ -50,4 +50,10 @@ impl Class {
     pub fn get_mehtod(&self, name:&str)-> Option<Rc<Closure>> {
         self.methods.borrow().get(name).cloned()
     }
+
+    pub fn copy_method(&self, superclass:&Self) {
+        for (k, v) in superclass.methods.borrow().iter() {
+            self.methods.borrow_mut().insert(k.to_string(), Rc::clone(v));
+        }
+    }
 }
