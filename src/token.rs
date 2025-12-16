@@ -7,6 +7,16 @@ pub struct Token {
     pub line: usize,
 }
 
+impl Token {
+    pub fn new(lexeme:&str) -> Self {
+        Self { 
+            ttype: TokenType::Undefined, 
+            lexeme: lexeme.to_string(), 
+            line: 0
+        }
+    }
+}
+
 impl Default for Token {
     fn default() -> Self {
         Self {

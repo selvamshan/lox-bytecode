@@ -34,12 +34,16 @@ struct UpvlaueData {
 
 #[derive(Default)]
 struct ClassCompiler {
-    enclosing: RefCell<Option<Rc<ClassCompiler>>>
+    enclosing: RefCell<Option<Rc<ClassCompiler>>>,
+    has_superclass: RefCell<bool>
 }
 
 impl ClassCompiler {
     fn new() -> Self {
-        Self { enclosing: RefCell::new(None) }
+        Self { 
+            enclosing: RefCell::new(None),
+            has_superclass: RefCell::new(false)
+         }
     }
 }
 
@@ -387,6 +391,7 @@ impl Compiler {
             precedence: Precedence::Call,
         };
         rules[TokenType::This as usize].prefix = Some(Compiler::this);
+        rules[TokenType::Super as usize].prefix = Some(Compiler::super_);
 
         Self {
             rules,
@@ -692,6 +697,26 @@ impl Compiler {
         self.variable(false);
     }
 
+    fn super_(&mut self, _can_assign:bool) {
+        match self.current_class.borrow().as_ref() {
+            None => self.error("Can't use 'super' outside of a class"),
+            Some(cc) => {
+                if !*cc.has_superclass.borrow() {
+                    self.error("Can't use 'super' in a class with no superclass.");
+                }
+            }
+        }
+        
+        self.consume(TokenType::Dot, "Expect '.' after 'super'.");
+        self.consume(TokenType::Identifier, "Expect superclass method name.");
+        let name = self.identifier_constant(&self.parser.previous.clone());
+        //&Token::new("super")
+        self.named_variable(&Token::new("this"), false);
+        self.named_variable(&Token::new("super"), false);
+        self.emit_bytes(OpCode::GetSuper, name);
+        
+    }
+
     fn unary(&mut self, _can_assign: bool) {
         let operator_type = self.parser.previous.ttype;
 
@@ -912,7 +937,7 @@ impl Compiler {
         self
         .current_class
         .borrow()
-        .as_deref()
+        .as_ref()
         .unwrap()
         .enclosing        
         .replace(prev);
@@ -924,8 +949,12 @@ impl Compiler {
             if class_name.lexeme == prev.lexeme {
                 self.error("A class can't inherit from itself");
             }
+            self.begin_scope();
+            self.add_local(&Token::new("super"));
+            self.define_variable(0);
             self.named_variable(&class_name, false);
             self.emit_byte(OpCode::Inherit);
+            self.current_class.borrow().as_ref().unwrap().has_superclass.replace(true);
         }
 
         self.named_variable(&class_name, false);
@@ -935,11 +964,14 @@ impl Compiler {
         }
         self.consume(TokenType::RightBrace, "Expected '}' before class body");
         self.emit_byte(OpCode::Pop);
+        if *self.current_class.borrow().as_ref().unwrap().has_superclass.borrow() {
+            self.end_scope();
+        }
 
         let prev =  self
         .current_class
         .borrow()
-        .as_deref()
+        .as_ref()
         .unwrap()
         .enclosing        
         .replace(None);
